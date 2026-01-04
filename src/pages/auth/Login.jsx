@@ -24,23 +24,29 @@ export default function Login() {
       if (result.success) {
         // Simpan user data ke localStorage
         localStorage.setItem('user', JSON.stringify(result.user));
-        localStorage.setItem('session', JSON.stringify(result.session));
-
-        // Tentukan role berdasarkan email (simple logic)
-        const role = email.includes('owner') ? 'owner' : 'admin';
-        localStorage.setItem('userRole', role);
+        localStorage.setItem('userRole', result.user.role);
+        localStorage.setItem('userId', result.user.user_id);
 
         setAlert({ type: 'success', message: 'Login berhasil! Mengalihkan...' });
 
-        // Redirect ke dashboard
+        // Redirect berdasarkan role
         setTimeout(() => {
-          navigate(role === 'owner' ? '/dashboard/owner' : '/dashboard/admin');
+          const destination = result.user.role === 'owner' 
+            ? '/dashboard/owner' 
+            : '/dashboard/admin';
+          navigate(destination);
         }, 1500);
       } else {
-        setAlert({ type: 'error', message: result.error || 'Login gagal! Email atau password salah.' });
+        setAlert({ 
+          type: 'error', 
+          message: result.error || 'Login gagal! Email atau password salah.' 
+        });
       }
     } catch (error) {
-      setAlert({ type: 'error', message: 'Terjadi kesalahan. Silakan coba lagi.' });
+      setAlert({ 
+        type: 'error', 
+        message: 'Terjadi kesalahan. Silakan coba lagi.' 
+      });
     } finally {
       setIsLoading(false);
     }

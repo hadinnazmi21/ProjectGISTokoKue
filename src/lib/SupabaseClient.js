@@ -2,39 +2,41 @@
 
 import { createClient } from '@supabase/supabase-js'
 
-// ⚠️ PENTING: Ganti dengan credentials Supabase Anda
-// Cara dapetin:
-// 1. Buka https://supabase.com
-// 2. Create project baru (gratis)
-// 3. Setelah project ready, buka Settings > API
-// 4. Copy "Project URL" dan "anon public" key
-
-// Ambil dari .env file (WAJIB pakai .env, jangan hardcode!)
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-// Validasi credentials
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase credentials! Check your .env file')
 }
 
-// Buat Supabase client
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-// ==================== AUTH FUNCTIONS ====================
+// ==================== AUTH FUNCTIONS (Custom Table) ====================
 
 /**
- * Login user dengan email & password
+ * Login user dengan tabel users custom
  */
 export const loginUser = async (email, password) => {
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    })
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .eq('password', password)
+      .single()
     
-    if (error) throw error
-    return { success: true, user: data.user, session: data.session }
+    if (error) throw new Error('Email atau password salah')
+    if (!data) throw new Error('User tidak ditemukan')
+    
+    return { 
+      success: true, 
+      user: {
+        user_id: data.user_id,
+        email: data.email,
+        role: data.role,
+        nama_lengkap: data.nama_lengkap
+      }
+    }
   } catch (error) {
     return { success: false, error: error.message }
   }
@@ -44,46 +46,55 @@ export const loginUser = async (email, password) => {
  * Logout user
  */
 export const logoutUser = async () => {
-  try {
-    const { error } = await supabase.auth.signOut()
-    if (error) throw error
-    return { success: true }
-  } catch (error) {
-    return { success: false, error: error.message }
-  }
+  return { success: true }
 }
 
 /**
- * Get current logged in user
+ * Get user by ID
  */
-export const getCurrentUser = async () => {
+export const getUserById = async (userId) => {
   try {
-    const { data: { user }, error } = await supabase.auth.getUser()
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('user_id', userId)
+      .single()
+    
     if (error) throw error
-    return { success: true, user }
+    return { success: true, data }
   } catch (error) {
     return { success: false, error: error.message }
   }
-}
-
-/**
- * Check if user is logged in
- */
-export const isAuthenticated = async () => {
-  const { data: { session } } = await supabase.auth.getSession()
-  return session !== null
 }
 
 // ==================== TOKO KUE CRUD FUNCTIONS ====================
 
 /**
- * GET: Ambil semua data toko kue
+ * GET: Ambil semua toko (untuk ADMIN)
  */
 export const getAllToko = async () => {
   try {
     const { data, error } = await supabase
       .from('toko_kue')
       .select('*')
+      .order('id', { ascending: true })
+    
+    if (error) throw error
+    return { success: true, data }
+  } catch (error) {
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * GET: Ambil toko milik owner tertentu (untuk OWNER)
+ */
+export const getTokoByUserId = async (userId) => {
+  try {
+    const { data, error } = await supabase
+      .from('toko_kue')
+      .select('*')
+      .eq('user_id', userId)
       .order('id', { ascending: true })
     
     if (error) throw error
@@ -180,7 +191,6 @@ export const uploadTokoImage = async (file, tokoId) => {
 
     if (error) throw error
 
-    // Get public URL
     const { data: { publicUrl } } = supabase.storage
       .from('images')
       .getPublicUrl(filePath)
@@ -271,7 +281,7 @@ export const addLog = async (logData) => {
       .from('log_history')
       .insert([{
         user_email: logData.userEmail,
-        action: logData.action, // 'create', 'update', 'delete'
+        action: logData.action,
         toko_name: logData.tokoName,
         timestamp: new Date().toISOString()
       }])

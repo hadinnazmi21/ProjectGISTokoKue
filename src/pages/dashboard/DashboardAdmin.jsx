@@ -1,7 +1,4 @@
 // src/pages/dashboard/DashboardAdmin.jsx
-// File ini hampir sama dengan DashboardOwner.jsx
-// Perbedaan: role = 'admin' dan navigasi berbeda
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Filter } from 'lucide-react';
@@ -32,11 +29,13 @@ export default function DashboardAdmin() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [alert, setAlert] = useState(null);
   const [userEmail, setUserEmail] = useState('');
+  const [userId, setUserId] = useState(null);
 
   // Check authentication
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user'));
     const role = localStorage.getItem('userRole');
+    const storedUserId = localStorage.getItem('userId');
 
     if (!user || role !== 'admin') {
       navigate('/login');
@@ -44,10 +43,11 @@ export default function DashboardAdmin() {
     }
 
     setUserEmail(user.email);
+    setUserId(parseInt(storedUserId));
     loadToko();
   }, [navigate]);
 
-  // Load data toko
+  // Admin bisa lihat semua toko
   const loadToko = async () => {
     setIsLoading(true);
     try {
@@ -95,8 +95,15 @@ export default function DashboardAdmin() {
   const handleSubmitForm = async (formData) => {
     setIsSubmitting(true);
     try {
+      // Admin menambahkan toko perlu user_id
+      // Bisa ditambahkan field pilih owner di form, atau set ke admin sendiri
+      const dataWithUserId = {
+        ...formData,
+        user_id: formData.user_id || userId // Gunakan user_id dari form atau admin sendiri
+      };
+
       if (selectedToko) {
-        const result = await updateToko(selectedToko.id, formData);
+        const result = await updateToko(selectedToko.id, dataWithUserId);
         if (result.success) {
           await addLog({
             userEmail,
@@ -113,7 +120,7 @@ export default function DashboardAdmin() {
           });
         }
       } else {
-        const result = await addToko(formData);
+        const result = await addToko(dataWithUserId);
         if (result.success) {
           await addLog({
             userEmail,
@@ -209,12 +216,12 @@ export default function DashboardAdmin() {
             <h1 className="text-3xl font-bold text-slate-800 mb-2">
               Dashboard Admin
             </h1>
-            <p className="text-slate-600">Kelola data toko kue</p>
+            <p className="text-slate-600">Kelola semua data toko kue</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div className="bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl p-6 text-white shadow-lg">
-              <p className="text-blue-100 mb-1">Total Toko</p>
+              <p className="text-blue-100 mb-1">Total Semua Toko</p>
               <p className="text-4xl font-bold">{tokoList.length}</p>
             </div>
             <div className="bg-gradient-to-br from-rose-500 to-pink-500 rounded-2xl p-6 text-white shadow-lg">
@@ -270,6 +277,12 @@ export default function DashboardAdmin() {
           {isLoading ? (
             <div className="flex justify-center py-20">
               <div className="w-16 h-16 border-4 border-rose-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : filteredTokoList.length === 0 ? (
+            <div className="bg-white rounded-2xl shadow-lg p-12 text-center border-2 border-slate-200">
+              <div className="text-6xl mb-4">🏪</div>
+              <p className="text-xl font-semibold text-slate-800 mb-2">Tidak ada toko</p>
+              <p className="text-slate-600">Coba ubah filter atau pencarian</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

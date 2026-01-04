@@ -7,7 +7,14 @@ import DashboardNavbar from '../../components/dashboard/DashboardNavbar';
 import TokoCard from '../../components/dashboard/TokoCard';
 import TokoForm from '../../components/dashboard/TokoForm';
 import CustomAlert from '../../components/dashboard/CustomAlert';
-import { getAllToko, addToko, updateToko, deleteToko, logoutUser, addLog } from '../../lib/SupabaseClient';
+import { 
+  getTokoByUserId, 
+  addToko, 
+  updateToko, 
+  deleteToko, 
+  logoutUser, 
+  addLog 
+} from '../../lib/SupabaseClient';
 
 export default function DashboardOwner() {
   const navigate = useNavigate();
@@ -22,26 +29,29 @@ export default function DashboardOwner() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [alert, setAlert] = useState(null);
   const [userEmail, setUserEmail] = useState('');
+  const [userId, setUserId] = useState(null);
 
   // Check authentication
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user'));
     const role = localStorage.getItem('userRole');
+    const storedUserId = localStorage.getItem('userId');
 
-    if (!user || role !== 'owner') {
+    if (!user || role !== 'owner' || !storedUserId) {
       navigate('/login');
       return;
     }
 
     setUserEmail(user.email);
-    loadToko();
+    setUserId(parseInt(storedUserId));
+    loadToko(parseInt(storedUserId));
   }, [navigate]);
 
-  // Load data toko dari Supabase
-  const loadToko = async () => {
+  // Load data toko milik owner ini saja
+  const loadToko = async (ownerId) => {
     setIsLoading(true);
     try {
-      const result = await getAllToko();
+      const result = await getTokoByUserId(ownerId);
       if (result.success) {
         setTokoList(result.data);
         setFilteredTokoList(result.data);
@@ -90,11 +100,16 @@ export default function DashboardOwner() {
   const handleSubmitForm = async (formData) => {
     setIsSubmitting(true);
     try {
+      // Pastikan user_id selalu disertakan
+      const dataWithUserId = {
+        ...formData,
+        user_id: userId
+      };
+
       if (selectedToko) {
         // Update
-        const result = await updateToko(selectedToko.id, formData);
+        const result = await updateToko(selectedToko.id, dataWithUserId);
         if (result.success) {
-          // Log activity
           await addLog({
             userEmail,
             action: 'update',
@@ -102,16 +117,15 @@ export default function DashboardOwner() {
           });
 
           setAlert({ type: 'success', message: 'Toko berhasil diupdate!' });
-          loadToko();
+          loadToko(userId);
           setIsFormOpen(false);
         } else {
           setAlert({ type: 'error', message: 'Gagal update toko: ' + result.error });
         }
       } else {
         // Tambah baru
-        const result = await addToko(formData);
+        const result = await addToko(dataWithUserId);
         if (result.success) {
-          // Log activity
           await addLog({
             userEmail,
             action: 'create',
@@ -119,7 +133,7 @@ export default function DashboardOwner() {
           });
 
           setAlert({ type: 'success', message: 'Toko berhasil ditambahkan!' });
-          loadToko();
+          loadToko(userId);
           setIsFormOpen(false);
         } else {
           setAlert({ type: 'error', message: 'Gagal menambahkan toko: ' + result.error });
@@ -134,6 +148,12 @@ export default function DashboardOwner() {
 
   // Hapus Toko
   const handleDeleteToko = async (toko) => {
+    // Validasi ownership
+    if (toko.user_id !== userId) {
+      setAlert({ type: 'error', message: 'Anda tidak memiliki akses untuk menghapus toko ini!' });
+      return;
+    }
+
     if (!window.confirm(`Yakin ingin menghapus "${toko.nama}"?`)) {
       return;
     }
@@ -141,7 +161,6 @@ export default function DashboardOwner() {
     try {
       const result = await deleteToko(toko.id);
       if (result.success) {
-        // Log activity
         await addLog({
           userEmail,
           action: 'delete',
@@ -149,7 +168,7 @@ export default function DashboardOwner() {
         });
 
         setAlert({ type: 'success', message: 'Toko berhasil dihapus!' });
-        loadToko();
+        loadToko(userId);
       } else {
         setAlert({ type: 'error', message: 'Gagal menghapus toko: ' + result.error });
       }
@@ -163,9 +182,7 @@ export default function DashboardOwner() {
     if (!window.confirm('Yakin ingin logout?')) return;
 
     await logoutUser();
-    localStorage.removeItem('user');
-    localStorage.removeItem('session');
-    localStorage.removeItem('userRole');
+    localStorage.clear();
     navigate('/login');
   };
 
@@ -201,13 +218,13 @@ export default function DashboardOwner() {
           {/* Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-slate-800 mb-2">Dashboard Owner</h1>
-            <p className="text-slate-600">Kelola data toko kue Anda</p>
+            <p className="text-slate-600">Kelola toko kue Anda</p>
           </div>
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div className="bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl p-6 text-white shadow-lg">
-              <p className="text-blue-100 mb-1">Total Toko</p>
+              <p className="text-blue-100 mb-1">Total Toko Saya</p>
               <p className="text-4xl font-bold">{tokoList.length}</p>
             </div>
             <div className="bg-gradient-to-br from-rose-500 to-pink-500 rounded-2xl p-6 text-white shadow-lg">
@@ -268,8 +285,16 @@ export default function DashboardOwner() {
           ) : filteredTokoList.length === 0 ? (
             <div className="bg-white rounded-2xl shadow-lg p-12 text-center border-2 border-slate-200">
               <div className="text-6xl mb-4">🏪</div>
-              <p className="text-xl font-semibold text-slate-800 mb-2">Tidak ada toko</p>
-              <p className="text-slate-600">Mulai tambahkan toko kue Anda</p>
+              <p className="text-xl font-semibold text-slate-800 mb-2">
+                {searchQuery || filterProduk !== 'all' 
+                  ? 'Tidak ada toko ditemukan' 
+                  : 'Belum ada toko'}
+              </p>
+              <p className="text-slate-600">
+                {searchQuery || filterProduk !== 'all'
+                  ? 'Coba ubah filter atau pencarian'
+                  : 'Mulai tambahkan toko kue Anda'}
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
