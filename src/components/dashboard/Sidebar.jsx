@@ -1,23 +1,29 @@
 // src/components/dashboard/Sidebar.jsx
-import { LayoutDashboard, Store, History, Settings, LogOut, X } from 'lucide-react';
+import { LayoutDashboard, Store, History, Settings, LogOut, X, FileText, Send } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 export default function Sidebar({ isOpen, onClose, userRole, onLogout }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const menuItems = [
+  const ownerMenuItems = [
     {
       icon: LayoutDashboard,
       label: 'Dashboard',
-      path: userRole === 'owner' ? '/dashboard/owner' : '/dashboard/admin',
+      path: '/dashboard/owner',
       color: 'text-blue-600'
     },
     {
       icon: Store,
-      label: 'Kelola Toko',
-      path: userRole === 'owner' ? '/dashboard/owner' : '/dashboard/admin',
+      label: 'Toko Saya',
+      path: '/dashboard/owner',
       color: 'text-rose-600'
+    },
+    {
+      icon: Send,
+      label: 'Request Toko',
+      path: '/dashboard/owner/requests',
+      color: 'text-amber-600'
     },
     {
       icon: History,
@@ -32,6 +38,41 @@ export default function Sidebar({ isOpen, onClose, userRole, onLogout }) {
       color: 'text-slate-600'
     }
   ];
+
+  const adminMenuItems = [
+    {
+      icon: LayoutDashboard,
+      label: 'Dashboard',
+      path: '/dashboard/admin',
+      color: 'text-blue-600'
+    },
+    {
+      icon: Store,
+      label: 'Kelola Toko',
+      path: '/dashboard/admin',
+      color: 'text-rose-600'
+    },
+    {
+      icon: FileText,
+      label: 'Request Approval',
+      path: '/dashboard/admin/requests',
+      color: 'text-orange-600'
+    },
+    {
+      icon: History,
+      label: 'Log History',
+      path: '/dashboard/log-history',
+      color: 'text-purple-600'
+    },
+    {
+      icon: Settings,
+      label: 'Pengaturan',
+      path: '/dashboard/settings',
+      color: 'text-slate-600'
+    }
+  ];
+
+  const menuItems = userRole === 'owner' ? ownerMenuItems : adminMenuItems;
 
   const handleNavigation = (path) => {
     navigate(path);

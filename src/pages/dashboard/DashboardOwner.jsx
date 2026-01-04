@@ -1,7 +1,7 @@
 // src/pages/dashboard/DashboardOwner.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Filter } from 'lucide-react';
+import { Search, Filter, Send } from 'lucide-react';
 import Sidebar from '../../components/dashboard/Sidebar';
 import DashboardNavbar from '../../components/dashboard/DashboardNavbar';
 import TokoCard from '../../components/dashboard/TokoCard';
@@ -9,7 +9,6 @@ import TokoForm from '../../components/dashboard/TokoForm';
 import CustomAlert from '../../components/dashboard/CustomAlert';
 import { 
   getTokoByUserId, 
-  addToko, 
   updateToko, 
   deleteToko, 
   logoutUser, 
@@ -31,7 +30,6 @@ export default function DashboardOwner() {
   const [userEmail, setUserEmail] = useState('');
   const [userId, setUserId] = useState(null);
 
-  // Check authentication
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user'));
     const role = localStorage.getItem('userRole');
@@ -47,7 +45,6 @@ export default function DashboardOwner() {
     loadToko(parseInt(storedUserId));
   }, [navigate]);
 
-  // Load data toko milik owner ini saja
   const loadToko = async (ownerId) => {
     setIsLoading(true);
     try {
@@ -65,16 +62,13 @@ export default function DashboardOwner() {
     }
   };
 
-  // Filter & Search
   useEffect(() => {
     let filtered = tokoList;
 
-    // Filter by produk
     if (filterProduk !== 'all') {
       filtered = filtered.filter(t => t.produk === filterProduk);
     }
 
-    // Search by nama
     if (searchQuery) {
       filtered = filtered.filter(t =>
         t.nama.toLowerCase().includes(searchQuery.toLowerCase())
@@ -84,60 +78,32 @@ export default function DashboardOwner() {
     setFilteredTokoList(filtered);
   }, [searchQuery, filterProduk, tokoList]);
 
-  // Tambah Toko
-  const handleAddToko = () => {
-    setSelectedToko(null);
-    setIsFormOpen(true);
-  };
-
-  // Edit Toko
   const handleEditToko = (toko) => {
     setSelectedToko(toko);
     setIsFormOpen(true);
   };
 
-  // Submit Form (Tambah/Edit)
   const handleSubmitForm = async (formData) => {
     setIsSubmitting(true);
     try {
-      // Pastikan user_id selalu disertakan
       const dataWithUserId = {
         ...formData,
         user_id: userId
       };
 
-      if (selectedToko) {
-        // Update
-        const result = await updateToko(selectedToko.id, dataWithUserId);
-        if (result.success) {
-          await addLog({
-            userEmail,
-            action: 'update',
-            tokoName: formData.nama
-          });
+      const result = await updateToko(selectedToko.id, dataWithUserId);
+      if (result.success) {
+        await addLog({
+          userEmail,
+          action: 'update',
+          tokoName: formData.nama
+        });
 
-          setAlert({ type: 'success', message: 'Toko berhasil diupdate!' });
-          loadToko(userId);
-          setIsFormOpen(false);
-        } else {
-          setAlert({ type: 'error', message: 'Gagal update toko: ' + result.error });
-        }
+        setAlert({ type: 'success', message: 'Toko berhasil diupdate!' });
+        loadToko(userId);
+        setIsFormOpen(false);
       } else {
-        // Tambah baru
-        const result = await addToko(dataWithUserId);
-        if (result.success) {
-          await addLog({
-            userEmail,
-            action: 'create',
-            tokoName: formData.nama
-          });
-
-          setAlert({ type: 'success', message: 'Toko berhasil ditambahkan!' });
-          loadToko(userId);
-          setIsFormOpen(false);
-        } else {
-          setAlert({ type: 'error', message: 'Gagal menambahkan toko: ' + result.error });
-        }
+        setAlert({ type: 'error', message: 'Gagal update toko: ' + result.error });
       }
     } catch (error) {
       setAlert({ type: 'error', message: 'Terjadi kesalahan: ' + error.message });
@@ -146,9 +112,7 @@ export default function DashboardOwner() {
     }
   };
 
-  // Hapus Toko
   const handleDeleteToko = async (toko) => {
-    // Validasi ownership
     if (toko.user_id !== userId) {
       setAlert({ type: 'error', message: 'Anda tidak memiliki akses untuk menghapus toko ini!' });
       return;
@@ -177,10 +141,8 @@ export default function DashboardOwner() {
     }
   };
 
-  // Logout
   const handleLogout = async () => {
     if (!window.confirm('Yakin ingin logout?')) return;
-
     await logoutUser();
     localStorage.clear();
     navigate('/login');
@@ -188,7 +150,6 @@ export default function DashboardOwner() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Alert */}
       {alert && (
         <CustomAlert
           type={alert.type}
@@ -197,14 +158,12 @@ export default function DashboardOwner() {
         />
       )}
 
-      {/* Navbar */}
       <DashboardNavbar
         onMenuClick={() => setIsSidebarOpen(true)}
         userEmail={userEmail}
         userRole="owner"
       />
 
-      {/* Sidebar */}
       <Sidebar
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
@@ -212,19 +171,17 @@ export default function DashboardOwner() {
         onLogout={handleLogout}
       />
 
-      {/* Main Content */}
       <div className="pt-16 lg:pl-64 min-h-screen">
         <div className="p-6">
-          {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-slate-800 mb-2">Dashboard Owner</h1>
-            <p className="text-slate-600">Kelola toko kue Anda</p>
+            <h1 className="text-3xl font-bold text-slate-800 mb-2">Toko Saya</h1>
+            <p className="text-slate-600">Toko yang sudah disetujui admin</p>
           </div>
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div className="bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl p-6 text-white shadow-lg">
-              <p className="text-blue-100 mb-1">Total Toko Saya</p>
+              <p className="text-blue-100 mb-1">Total Toko Aktif</p>
               <p className="text-4xl font-bold">{tokoList.length}</p>
             </div>
             <div className="bg-gradient-to-br from-rose-500 to-pink-500 rounded-2xl p-6 text-white shadow-lg">
@@ -237,10 +194,29 @@ export default function DashboardOwner() {
             </div>
           </div>
 
+          {/* Info Banner */}
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-2xl p-6 mb-6">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-amber-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                <Send className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800 mb-2">Ingin Menambahkan Toko Baru?</h3>
+                <p className="text-slate-600 mb-3">Kirim request ke admin untuk menambahkan toko baru. Admin akan meninjau dan menyetujui request Anda.</p>
+                <button
+                  onClick={() => navigate('/dashboard/owner/requests')}
+                  className="px-6 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-semibold transition-all flex items-center gap-2"
+                >
+                  <Send className="w-4 h-4" />
+                  Kirim Request
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Controls */}
           <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border-2 border-slate-200">
             <div className="flex flex-col md:flex-row gap-4">
-              {/* Search */}
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
@@ -252,7 +228,6 @@ export default function DashboardOwner() {
                 />
               </div>
 
-              {/* Filter */}
               <div className="relative">
                 <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <select
@@ -265,15 +240,6 @@ export default function DashboardOwner() {
                   <option value="Brownies">Brownies</option>
                 </select>
               </div>
-
-              {/* Tambah Button */}
-              <button
-                onClick={handleAddToko}
-                className="px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center gap-2 justify-center"
-              >
-                <Plus className="w-5 h-5" />
-                <span className="hidden sm:inline">Tambah Toko</span>
-              </button>
             </div>
           </div>
 
@@ -288,13 +254,20 @@ export default function DashboardOwner() {
               <p className="text-xl font-semibold text-slate-800 mb-2">
                 {searchQuery || filterProduk !== 'all' 
                   ? 'Tidak ada toko ditemukan' 
-                  : 'Belum ada toko'}
+                  : 'Belum ada toko aktif'}
               </p>
-              <p className="text-slate-600">
+              <p className="text-slate-600 mb-4">
                 {searchQuery || filterProduk !== 'all'
                   ? 'Coba ubah filter atau pencarian'
-                  : 'Mulai tambahkan toko kue Anda'}
+                  : 'Kirim request untuk menambahkan toko pertama Anda'}
               </p>
+              <button
+                onClick={() => navigate('/dashboard/owner/requests')}
+                className="px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all inline-flex items-center gap-2"
+              >
+                <Send className="w-5 h-5" />
+                Request Toko Baru
+              </button>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -311,7 +284,6 @@ export default function DashboardOwner() {
         </div>
       </div>
 
-      {/* Form Modal */}
       {isFormOpen && (
         <TokoForm
           toko={selectedToko}

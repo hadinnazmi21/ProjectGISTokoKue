@@ -174,6 +174,295 @@ export const deleteToko = async (id) => {
   }
 }
 
+// ==================== TOKO REQUEST FUNCTIONS ====================
+
+/**
+ * CREATE: Owner submit request toko baru - SCHEMA BARU
+ */
+export const createTokoRequest = async (requestData) => {
+  try {
+    console.log('📝 Creating request with data:', requestData);
+    
+    // Pastikan semua field sesuai dengan schema baru
+    const requestPayload = {
+      user_id: requestData.user_id,
+      nama: requestData.nama,
+      lat: requestData.lat,
+      lng: requestData.lng,
+      kecamatan: requestData.kecamatan || null,
+      kelurahan: requestData.kelurahan || null,
+      jalan: requestData.jalan || requestData.alamat || null, // Support both
+      produk: requestData.produk,
+      // Field opsional
+      jam_buka: requestData.jam_buka || null,
+      tahun_berdiri: requestData.tahun_berdiri || null,
+      telp: requestData.telp || requestData.no_telp || null, // Support both
+      menu_favorit: requestData.menu_favorit || null,
+      deskripsi: requestData.deskripsi || null,
+      gamba: requestData.gamba || requestData.gambar_toko || requestData.gambar || null,
+      gambarmenu: requestData.gambarmenu || requestData.gambar_menu || null,
+      status: 'pending'
+    }
+
+    console.log('📦 Request payload:', requestPayload);
+
+    const { data, error } = await supabase
+      .from('toko_requests')
+      .insert([requestPayload])
+      .select()
+    
+    if (error) {
+      console.error('❌ Insert error:', error);
+      throw error;
+    }
+    
+    console.log('✅ Request created:', data);
+    return { success: true, data: data[0] }
+  } catch (error) {
+    console.error('❌ Create request failed:', error);
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * GET: Ambil semua request (untuk Admin)
+ */
+export const getAllRequests = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('toko_requests')
+      .select(`
+        *,
+        users (
+          email,
+          nama_lengkap
+        )
+      `)
+      .order('created_at', { ascending: false })
+    
+    if (error) throw error
+    return { success: true, data }
+  } catch (error) {
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * GET: Ambil request milik owner tertentu
+ */
+export const getRequestsByUserId = async (userId) => {
+  try {
+    const { data, error } = await supabase
+      .from('toko_requests')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+    
+    if (error) throw error
+    return { success: true, data }
+  } catch (error) {
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * UPDATE: Admin approve request - ULTRA DEFENSIVE VERSION
+ */
+export const approveRequest = async (requestId, adminNote = '') => {
+  try {
+    console.log('=== APPROVE REQUEST START ===');
+    console.log('Request ID:', requestId);
+    console.log('Admin Note:', adminNote);
+
+    // 1. Ambil data request
+    const { data: request, error: fetchError } = await supabase
+      .from('toko_requests')
+      .select('*')
+      .eq('id', requestId)
+      .single()
+    
+    if (fetchError) {
+      console.error('❌ Error fetching request:', fetchError);
+      throw new Error(`Gagal mengambil data request: ${fetchError.message}`);
+    }
+
+    if (!request) {
+      throw new Error('Request tidak ditemukan');
+    }
+
+    console.log('✅ Request data:', JSON.stringify(request, null, 2));
+    console.log('📋 Request fields:', Object.keys(request));
+
+    // 2. Validasi data required
+    if (!request.user_id || !request.nama || !request.lat || !request.lng) {
+      throw new Error('Data required tidak lengkap (user_id, nama, lat, lng)');
+    }
+
+    // 3. TEST INSERT - Cek struktur tabel toko_kue dulu
+    console.log('🔍 Testing toko_kue table structure...');
+    const { data: sampleToko } = await supabase
+      .from('toko_kue')
+      .select('*')
+      .limit(1);
+    
+    if (sampleToko && sampleToko.length > 0) {
+      console.log('📋 Toko_kue available fields:', Object.keys(sampleToko[0]));
+    }
+
+    // 4. Prepare payload dengan NULL safety
+    const tokoPayload = {
+      user_id: request.user_id,
+      nama: request.nama,
+      lat: request.lat ? parseFloat(request.lat) : null,
+      lng: request.lng ? parseFloat(request.lng) : null,
+      kecamatan: request.kecamatan || null,
+      kelurahan: request.kelurahan || null,
+      jalan: request.jalan || request.alamat || null,
+      produk: request.produk || 'Kue',
+      jam_buka: request.jam_buka || null,
+      telp: request.telp || request.no_telp || null,
+      menu_favorit: request.menu_favorit || null,
+      deskripsi: request.deskripsi || null,
+      gambar: request.gamba || request.gambar_toko || request.gambar || null,
+      gambarmenu: request.gambarmenu || request.gambar_menu || null,
+      rating: null
+    };
+
+    // Handle tahun_berdiri - bisa BIGINT atau INTEGER
+    if (request.tahun_berdiri) {
+      const tahun = parseInt(request.tahun_berdiri);
+      tokoPayload.tahun_berdiri = isNaN(tahun) ? null : tahun;
+    } else {
+      tokoPayload.tahun_berdiri = null;
+    }
+
+    console.log('📦 Toko payload:', JSON.stringify(tokoPayload, null, 2));
+    console.log('📊 Payload types:', {
+      user_id: typeof tokoPayload.user_id,
+      lat: typeof tokoPayload.lat,
+      lng: typeof tokoPayload.lng,
+      tahun_berdiri: typeof tokoPayload.tahun_berdiri
+    });
+
+    // 5. Insert ke toko_kue dengan error handling detail
+    console.log('💾 Attempting to insert into toko_kue...');
+    const { data: newToko, error: insertError } = await supabase
+      .from('toko_kue')
+      .insert([tokoPayload])
+      .select()
+    
+    if (insertError) {
+      console.error('❌ INSERT FAILED!');
+      console.error('❌ Error code:', insertError.code);
+      console.error('❌ Error message:', insertError.message);
+      console.error('❌ Error details:', insertError.details);
+      console.error('❌ Error hint:', insertError.hint);
+      console.error('❌ Full error:', JSON.stringify(insertError, null, 2));
+      
+      // Coba identifikasi masalahnya
+      if (insertError.code === '23503') {
+        throw new Error(`Foreign key constraint failed. User ID ${request.user_id} mungkin tidak ada di tabel users.`);
+      } else if (insertError.code === '23502') {
+        throw new Error(`Field required kosong: ${insertError.message}`);
+      } else if (insertError.code === '42703') {
+        throw new Error(`Kolom tidak ditemukan: ${insertError.message}`);
+      } else {
+        throw new Error(`Database error: ${insertError.message} (Code: ${insertError.code})`);
+      }
+    }
+
+    if (!newToko || newToko.length === 0) {
+      throw new Error('Insert berhasil tapi tidak mengembalikan data');
+    }
+
+    console.log('✅ Toko berhasil ditambahkan!');
+    console.log('✅ New toko data:', JSON.stringify(newToko[0], null, 2));
+
+    // 6. Update status request
+    console.log('📝 Updating request status...');
+    const { error: updateError } = await supabase
+      .from('toko_requests')
+      .update({
+        status: 'approved',
+        admin_note: adminNote || null
+      })
+      .eq('id', requestId)
+    
+    if (updateError) {
+      console.error('⚠️ Warning - Error updating request status:', updateError);
+      console.warn('⚠️ Toko sudah ditambahkan, tapi status request gagal diupdate');
+      // Jangan throw error, karena toko sudah berhasil ditambahkan
+    } else {
+      console.log('✅ Request status updated to approved');
+    }
+
+    console.log('=== APPROVE REQUEST SUCCESS ===');
+    return { success: true, data: newToko[0] };
+
+  } catch (error) {
+    console.error('=== APPROVE REQUEST FAILED ===');
+    console.error('❌ Error type:', error.constructor.name);
+    console.error('❌ Error message:', error.message);
+    if (error.code) {
+      console.error('❌ Error code:', error.code);
+    }
+    if (error.stack) {
+      console.error('❌ Error stack:', error.stack);
+    }
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * UPDATE: Admin reject request
+ */
+export const rejectRequest = async (requestId, adminNote = '') => {
+  try {
+    console.log('=== REJECT REQUEST START ===');
+    console.log('Request ID:', requestId);
+    console.log('Admin Note:', adminNote);
+
+    const { error } = await supabase
+      .from('toko_requests')
+      .update({
+        status: 'rejected',
+        admin_note: adminNote || null
+      })
+      .eq('id', requestId)
+    
+    if (error) {
+      console.error('❌ Error rejecting request:', error);
+      throw error;
+    }
+
+    console.log('✅ Request rejected successfully');
+    console.log('=== REJECT REQUEST SUCCESS ===');
+    return { success: true };
+
+  } catch (error) {
+    console.error('=== REJECT REQUEST FAILED ===');
+    console.error('Error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * DELETE: Hapus request
+ */
+export const deleteRequest = async (requestId) => {
+  try {
+    const { error } = await supabase
+      .from('toko_requests')
+      .delete()
+      .eq('id', requestId)
+    
+    if (error) throw error
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: error.message }
+  }
+}
+
 // ==================== UPLOAD IMAGE FUNCTIONS ====================
 
 /**

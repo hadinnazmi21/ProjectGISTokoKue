@@ -12,6 +12,8 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/auth/Login";
 import DashboardOwner from "./pages/dashboard/DashboardOwner";
 import DashboardAdmin from "./pages/dashboard/DashboardAdmin";
+import OwnerRequests from "./pages/dashboard/OwnerRequests";
+import AdminRequests from "./pages/dashboard/AdminRequests";
 import LogHistory from "./pages/dashboard/LogHistory";
 import Settings from "./pages/dashboard/Settings";
 
@@ -34,6 +36,12 @@ export default function App() {
       {/* Dashboard Routes (tanpa Navbar & Footer) */}
       <Route path="/dashboard/owner" element={<DashboardOwner />} />
       <Route path="/dashboard/admin" element={<DashboardAdmin />} />
+      
+      {/* Request Routes - BARU */}
+      <Route path="/dashboard/owner/requests" element={<OwnerRequests />} />
+      <Route path="/dashboard/admin/requests" element={<AdminRequests />} />
+      
+      {/* Other Dashboard Pages */}
       <Route path="/dashboard/log-history" element={<LogHistory />} />
       <Route path="/dashboard/settings" element={<Settings />} />
 

@@ -73,14 +73,26 @@ export default function LogHistory() {
 
   const getActionBadge = (action) => {
     const styles = {
+      // Toko actions
       create: 'bg-green-100 text-green-700 border-green-200',
       update: 'bg-blue-100 text-blue-700 border-blue-200',
-      delete: 'bg-red-100 text-red-700 border-red-200'
+      delete: 'bg-red-100 text-red-700 border-red-200',
+      // Request actions
+      create_request: 'bg-amber-100 text-amber-700 border-amber-200',
+      approve_request: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+      reject_request: 'bg-rose-100 text-rose-700 border-rose-200',
+      delete_request: 'bg-orange-100 text-orange-700 border-orange-200'
     };
     const labels = {
-      create: 'Tambah',
-      update: 'Edit',
-      delete: 'Hapus'
+      // Toko actions
+      create: 'Tambah Toko',
+      update: 'Edit Toko',
+      delete: 'Hapus Toko',
+      // Request actions
+      create_request: 'Kirim Request',
+      approve_request: 'Setujui Request',
+      reject_request: 'Tolak Request',
+      delete_request: 'Hapus Request'
     };
     return (
       <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${styles[action] || 'bg-slate-100 text-slate-700'}`}>
@@ -133,12 +145,14 @@ export default function LogHistory() {
               <p className="text-3xl font-bold text-slate-800">{logs.length}</p>
             </div>
             <div className="bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl p-6 text-white shadow-lg">
-              <p className="text-green-100 text-sm mb-1">Ditambah</p>
+              <p className="text-green-100 text-sm mb-1">Toko Ditambah</p>
               <p className="text-3xl font-bold">{logs.filter(l => l.action === 'create').length}</p>
             </div>
-            <div className="bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl p-6 text-white shadow-lg">
-              <p className="text-blue-100 text-sm mb-1">Diedit</p>
-              <p className="text-3xl font-bold">{logs.filter(l => l.action === 'update').length}</p>
+            <div className="bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl p-6 text-white shadow-lg">
+              <p className="text-amber-100 text-sm mb-1">Request</p>
+              <p className="text-3xl font-bold">
+                {logs.filter(l => ['create_request', 'approve_request', 'reject_request', 'delete_request'].includes(l.action)).length}
+              </p>
             </div>
             <div className="bg-gradient-to-br from-red-500 to-pink-500 rounded-2xl p-6 text-white shadow-lg">
               <p className="text-red-100 text-sm mb-1">Dihapus</p>
@@ -166,9 +180,17 @@ export default function LogHistory() {
                 className="px-6 py-3 border-2 border-slate-200 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all outline-none bg-white"
               >
                 <option value="all">Semua Aktivitas</option>
-                <option value="create">Tambah</option>
-                <option value="update">Edit</option>
-                <option value="delete">Hapus</option>
+                <optgroup label="Toko">
+                  <option value="create">Tambah Toko</option>
+                  <option value="update">Edit Toko</option>
+                  <option value="delete">Hapus Toko</option>
+                </optgroup>
+                <optgroup label="Request">
+                  <option value="create_request">Kirim Request</option>
+                  <option value="approve_request">Setujui Request</option>
+                  <option value="reject_request">Tolak Request</option>
+                  <option value="delete_request">Hapus Request</option>
+                </optgroup>
               </select>
             </div>
           </div>
@@ -191,8 +213,8 @@ export default function LogHistory() {
                 <div className="grid grid-cols-12 gap-4 text-white font-semibold">
                   <div className="col-span-3">Waktu</div>
                   <div className="col-span-2">User</div>
-                  <div className="col-span-2">Aktivitas</div>
-                  <div className="col-span-5">Nama Toko</div>
+                  <div className="col-span-3">Aktivitas</div>
+                  <div className="col-span-4">Nama Toko</div>
                 </div>
               </div>
 
@@ -214,10 +236,10 @@ export default function LogHistory() {
                           {log.user_email?.split('@')[0]}
                         </span>
                       </div>
-                      <div className="col-span-2">
+                      <div className="col-span-3">
                         {getActionBadge(log.action)}
                       </div>
-                      <div className="col-span-5 flex items-center gap-2">
+                      <div className="col-span-4 flex items-center gap-2">
                         <Activity className="w-4 h-4 text-slate-400" />
                         <span className="text-slate-800 font-medium truncate" title={log.toko_name}>
                           {log.toko_name || '-'}
