@@ -1,10 +1,10 @@
 // src/pages/dashboard/LogHistory.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { History, Search, Calendar, User, Activity, Filter } from 'lucide-react';
+import { History, Search, Calendar, User, Activity, Filter, RefreshCw } from 'lucide-react';
 import Sidebar from '../../components/dashboard/Sidebar';
 import DashboardNavbar from '../../components/dashboard/DashboardNavbar';
-import { getAllLogs, logoutUser } from '../../lib/SupabaseClient';
+import { getAllLogs, getLogsByUserEmail, logoutUser } from '../../lib/SupabaseClient';
 
 export default function LogHistory() {
   const navigate = useNavigate();
@@ -17,6 +17,7 @@ export default function LogHistory() {
   const [isLoading, setIsLoading] = useState(true);
   const [userEmail, setUserEmail] = useState('');
   const [userRole, setUserRole] = useState('');
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user'));
@@ -29,39 +30,75 @@ export default function LogHistory() {
 
     setUserEmail(user.email);
     setUserRole(role);
-    loadLogs();
+    loadLogs(role, user.email);
   }, [navigate]);
 
-  const loadLogs = async () => {
+  const loadLogs = async (role, email) => {
+    console.log('🔄 Starting to load logs...');
+    console.log('👤 User role:', role);
+    console.log('📧 User email:', email);
+    
     setIsLoading(true);
+    setError(null);
     try {
-      const result = await getAllLogs();
+      let result;
+      
+      // ✅ ADMIN: Lihat semua log
+      if (role === 'admin') {
+        console.log('👑 Admin detected - fetching ALL logs');
+        result = await getAllLogs();
+      } 
+      // ✅ OWNER: Hanya lihat log mereka sendiri
+      else if (role === 'owner') {
+        console.log('🏪 Owner detected - fetching ONLY their logs');
+        result = await getLogsByUserEmail(email);
+      }
+      
+      console.log('📦 Result from database:', result);
+      
       if (result.success) {
-        console.log('📊 Loaded logs:', result.data);
+        console.log('✅ Success! Logs data:', result.data);
+        console.log('📊 Number of logs:', result.data.length);
+        
+        if (result.data.length > 0) {
+          console.log('🔍 First log sample:', result.data[0]);
+        }
+        
         setLogs(result.data);
         setFilteredLogs(result.data);
       } else {
         console.error('❌ Failed to load logs:', result.error);
+        setError(result.error);
       }
     } catch (error) {
       console.error('❌ Error loading logs:', error);
+      setError(error.message);
     } finally {
       setIsLoading(false);
+      console.log('✅ Load logs completed');
     }
   };
 
   // Filter logs
   useEffect(() => {
+    console.log('🔍 Filtering logs...');
+    console.log('Total logs:', logs.length);
+    console.log('Filter action:', filterAction);
+    console.log('Filter role:', filterRole);
+    console.log('Search query:', searchQuery);
+    
     let filtered = logs;
 
     // Filter by action
     if (filterAction !== 'all') {
       filtered = filtered.filter(log => log.action === filterAction);
+      console.log(`After action filter (${filterAction}):`, filtered.length);
     }
 
-    // Filter by role
-    if (filterRole !== 'all') {
+    // Filter by role (hanya untuk admin)
+    if (filterRole !== 'all' && userRole === 'admin') {
       filtered = filtered.filter(log => log.user_role === filterRole);
+      console.log(`After role filter (${filterRole}):`, filtered.length);
     }
 
     // Filter by search
@@ -71,10 +108,12 @@ export default function LogHistory() {
         log.user_email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         log.description?.toLowerCase().includes(searchQuery.toLowerCase())
       );
+      console.log(`After search filter (${searchQuery}):`, filtered.length);
     }
 
+    console.log('📊 Final filtered logs:', filtered.length);
     setFilteredLogs(filtered);
-  }, [searchQuery, filterAction, filterRole, logs]);
+  }, [searchQuery, filterAction, filterRole, logs, userRole]);
 
   const handleLogout = async () => {
     if (!window.confirm('Yakin ingin logout?')) return;
@@ -85,29 +124,25 @@ export default function LogHistory() {
 
   const getActionBadge = (action) => {
     const styles = {
-      // Toko actions
       create: 'bg-green-100 text-green-700 border-green-200',
       update: 'bg-blue-100 text-blue-700 border-blue-200',
       delete: 'bg-red-100 text-red-700 border-red-200',
-      // Request actions
       create_request: 'bg-amber-100 text-amber-700 border-amber-200',
       approve_request: 'bg-emerald-100 text-emerald-700 border-emerald-200',
       reject_request: 'bg-rose-100 text-rose-700 border-rose-200',
       delete_request: 'bg-orange-100 text-orange-700 border-orange-200'
     };
     const labels = {
-      // Toko actions
       create: '➕ Tambah Toko',
       update: '✏️ Edit Toko',
       delete: '🗑️ Hapus Toko',
-      // Request actions
       create_request: '📤 Kirim Request',
       approve_request: '✅ Setujui Request',
       reject_request: '❌ Tolak Request',
       delete_request: '🗑️ Hapus Request'
     };
     return (
-      <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${styles[action] || 'bg-slate-100 text-slate-700'}`}>
+      <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${styles[action] || 'bg-slate-100 text-slate-700 border-slate-200'}`}>
         {labels[action] || action}
       </span>
     );
@@ -123,8 +158,8 @@ export default function LogHistory() {
       owner: '🏪 Owner'
     };
     return (
-      <span className={`px-2 py-1 rounded text-xs font-semibold border ${styles[role] || 'bg-slate-100 text-slate-700'}`}>
-        {labels[role] || role}
+      <span className={`px-2 py-1 rounded text-xs font-semibold border ${styles[role] || 'bg-slate-100 text-slate-700 border-slate-200'}`}>
+        {labels[role] || role || '-'}
       </span>
     );
   };
@@ -160,12 +195,49 @@ export default function LogHistory() {
         <div className="p-6">
           {/* Header */}
           <div className="mb-8">
-            <div className="flex items-center gap-3 mb-2">
-              <History className="w-8 h-8 text-purple-600" />
-              <h1 className="text-3xl font-bold text-slate-800">Log History</h1>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <History className="w-8 h-8 text-purple-600" />
+                  <h1 className="text-3xl font-bold text-slate-800">Log History</h1>
+                </div>
+                <p className="text-slate-600">
+                  {userRole === 'admin' 
+                    ? 'Riwayat aktivitas sistem dari semua pengguna' 
+                    : 'Riwayat aktivitas Anda'}
+                </p>
+              </div>
+              <button
+                onClick={() => loadLogs(userRole, userEmail)}
+                className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-all flex items-center gap-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Refresh
+              </button>
             </div>
-            <p className="text-slate-600">Riwayat aktivitas sistem dari admin dan owner</p>
           </div>
+
+          {/* Info Banner untuk Owner */}
+          {userRole === 'owner' && (
+            <div className="mb-6 bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
+                  <User className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-800">Catatan untuk Owner</p>
+                  <p className="text-sm text-slate-600">Anda hanya dapat melihat log aktivitas yang berkaitan dengan akun Anda</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Debug Info */}
+          {error && (
+            <div className="mb-6 bg-red-50 border-2 border-red-200 rounded-xl p-4">
+              <p className="text-red-700 font-semibold">❌ Error: {error}</p>
+            </div>
+          )}
 
           {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -174,17 +246,19 @@ export default function LogHistory() {
               <p className="text-3xl font-bold text-slate-800">{logs.length}</p>
             </div>
             <div className="bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl p-6 text-white shadow-lg">
-              <p className="text-green-100 text-sm mb-1">Toko Ditambah</p>
+              <p className="text-green-100 text-sm mb-1">
+                {userRole === 'admin' ? 'Toko Ditambah' : 'Toko Dibuat'}
+              </p>
               <p className="text-3xl font-bold">{logs.filter(l => l.action === 'create').length}</p>
             </div>
             <div className="bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl p-6 text-white shadow-lg">
-              <p className="text-amber-100 text-sm mb-1">Request Diproses</p>
+              <p className="text-amber-100 text-sm mb-1">Request</p>
               <p className="text-3xl font-bold">
                 {logs.filter(l => ['create_request', 'approve_request', 'reject_request'].includes(l.action)).length}
               </p>
             </div>
             <div className="bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl p-6 text-white shadow-lg">
-              <p className="text-blue-100 text-sm mb-1">Total Edit</p>
+              <p className="text-blue-100 text-sm mb-1">Edit/Update</p>
               <p className="text-3xl font-bold">{logs.filter(l => l.action === 'update').length}</p>
             </div>
           </div>
@@ -196,25 +270,28 @@ export default function LogHistory() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Cari nama toko, email, atau deskripsi..."
+                  placeholder="Cari nama toko atau deskripsi..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-11 pr-4 py-3 border-2 border-slate-200 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all outline-none"
                 />
               </div>
 
-              <div className="relative">
-                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <select
-                  value={filterRole}
-                  onChange={(e) => setFilterRole(e.target.value)}
-                  className="pl-11 pr-8 py-3 border-2 border-slate-200 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all outline-none bg-white"
-                >
-                  <option value="all">Semua Role</option>
-                  <option value="admin">Admin</option>
-                  <option value="owner">Owner</option>
-                </select>
-              </div>
+              {/* Filter Role - Hanya untuk Admin */}
+              {userRole === 'admin' && (
+                <div className="relative">
+                  <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <select
+                    value={filterRole}
+                    onChange={(e) => setFilterRole(e.target.value)}
+                    className="pl-11 pr-8 py-3 border-2 border-slate-200 rounded-xl focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all outline-none bg-white"
+                  >
+                    <option value="all">Semua Role</option>
+                    <option value="admin">Admin</option>
+                    <option value="owner">Owner</option>
+                  </select>
+                </div>
+              )}
 
               <select
                 value={filterAction}
@@ -239,8 +316,9 @@ export default function LogHistory() {
 
           {/* Log Table */}
           {isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+            <div className="flex flex-col items-center justify-center py-20">
+              <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+              <p className="text-slate-600">Memuat log history...</p>
             </div>
           ) : filteredLogs.length === 0 ? (
             <div className="bg-white rounded-2xl shadow-lg p-12 text-center border-2 border-slate-200">
@@ -248,9 +326,19 @@ export default function LogHistory() {
               <p className="text-xl font-semibold text-slate-800 mb-2">Tidak ada log</p>
               <p className="text-slate-600">
                 {logs.length === 0 
-                  ? 'Belum ada aktivitas yang tercatat' 
+                  ? userRole === 'admin'
+                    ? 'Belum ada aktivitas yang tercatat di sistem.' 
+                    : 'Belum ada aktivitas dari Anda. Mulai tambahkan toko atau kirim request.'
                   : 'Tidak ditemukan log dengan filter yang dipilih'}
               </p>
+              {logs.length === 0 && (
+                <button
+                  onClick={() => loadLogs(userRole, userEmail)}
+                  className="mt-4 px-6 py-3 bg-purple-500 text-white rounded-xl font-semibold hover:bg-purple-600 transition-all"
+                >
+                  Refresh Data
+                </button>
+              )}
             </div>
           ) : (
             <div className="bg-white rounded-2xl shadow-lg border-2 border-slate-200 overflow-hidden">
@@ -260,17 +348,19 @@ export default function LogHistory() {
                   <div key={log.id || idx} className="p-4 hover:bg-slate-50 transition-colors">
                     <div className="flex items-start justify-between mb-2">
                       {getActionBadge(log.action)}
-                      {log.user_role && getRoleBadge(log.user_role)}
+                      {userRole === 'admin' && getRoleBadge(log.user_role)}
                     </div>
                     <div className="space-y-2 text-sm">
                       <div className="flex items-center gap-2 text-slate-600">
                         <Calendar className="w-4 h-4" />
                         <span>{formatDate(log.timestamp)}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-slate-600">
-                        <User className="w-4 h-4" />
-                        <span className="truncate">{log.user_email || '-'}</span>
-                      </div>
+                      {userRole === 'admin' && (
+                        <div className="flex items-center gap-2 text-slate-600">
+                          <User className="w-4 h-4" />
+                          <span className="truncate">{log.user_email || '-'}</span>
+                        </div>
+                      )}
                       {log.toko_name && (
                         <div className="flex items-center gap-2">
                           <Activity className="w-4 h-4 text-slate-400" />
@@ -291,13 +381,13 @@ export default function LogHistory() {
               <div className="hidden md:block">
                 {/* Table Header */}
                 <div className="bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-4">
-                  <div className="grid grid-cols-12 gap-4 text-white font-semibold text-sm">
+                  <div className={`grid ${userRole === 'admin' ? 'grid-cols-12' : 'grid-cols-10'} gap-4 text-white font-semibold text-sm`}>
                     <div className="col-span-2">Waktu</div>
-                    <div className="col-span-2">User</div>
-                    <div className="col-span-1">Role</div>
+                    {userRole === 'admin' && <div className="col-span-2">User</div>}
+                    {userRole === 'admin' && <div className="col-span-1">Role</div>}
                     <div className="col-span-2">Aktivitas</div>
                     <div className="col-span-2">Toko</div>
-                    <div className="col-span-3">Deskripsi</div>
+                    <div className={userRole === 'admin' ? 'col-span-3' : 'col-span-4'}>Deskripsi</div>
                   </div>
                 </div>
 
@@ -308,20 +398,24 @@ export default function LogHistory() {
                       key={log.id || idx}
                       className="px-6 py-4 hover:bg-slate-50 transition-colors"
                     >
-                      <div className="grid grid-cols-12 gap-4 items-center text-sm">
+                      <div className={`grid ${userRole === 'admin' ? 'grid-cols-12' : 'grid-cols-10'} gap-4 items-center text-sm`}>
                         <div className="col-span-2 flex items-center gap-2">
                           <Calendar className="w-4 h-4 text-slate-400 flex-shrink-0" />
                           <span className="text-slate-700 text-xs">{formatDate(log.timestamp)}</span>
                         </div>
-                        <div className="col-span-2 flex items-center gap-2">
-                          <User className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                          <span className="text-slate-700 truncate text-xs" title={log.user_email}>
-                            {log.user_email?.split('@')[0] || '-'}
-                          </span>
-                        </div>
-                        <div className="col-span-1">
-                          {log.user_role ? getRoleBadge(log.user_role) : '-'}
-                        </div>
+                        {userRole === 'admin' && (
+                          <div className="col-span-2 flex items-center gap-2">
+                            <User className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                            <span className="text-slate-700 truncate text-xs" title={log.user_email}>
+                              {log.user_email?.split('@')[0] || '-'}
+                            </span>
+                          </div>
+                        )}
+                        {userRole === 'admin' && (
+                          <div className="col-span-1">
+                            {getRoleBadge(log.user_role)}
+                          </div>
+                        )}
                         <div className="col-span-2">
                           {getActionBadge(log.action)}
                         </div>
@@ -331,7 +425,7 @@ export default function LogHistory() {
                             {log.toko_name || '-'}
                           </span>
                         </div>
-                        <div className="col-span-3">
+                        <div className={userRole === 'admin' ? 'col-span-3' : 'col-span-4'}>
                           <span className="text-slate-600 text-xs line-clamp-2" title={log.description}>
                             {log.description || '-'}
                           </span>
