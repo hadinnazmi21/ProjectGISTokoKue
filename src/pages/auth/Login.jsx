@@ -1,17 +1,30 @@
 // src/pages/auth/Login.jsx
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { LogIn, Mail, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { loginUser } from '../../lib/SupabaseClient';
 import CustomAlert from '../../components/dashboard/CustomAlert';
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [alert, setAlert] = useState(null);
+
+  // Show success message from registration
+  useEffect(() => {
+    if (location.state?.message) {
+      setAlert({ type: 'success', message: location.state.message });
+      if (location.state?.email) {
+        setEmail(location.state.email);
+      }
+      // Clear location state
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -72,7 +85,7 @@ export default function Login() {
       {/* Back Button */}
       <button
         onClick={() => navigate('/')}
-        className="absolute top-6 left-6 flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur hover:bg-white rounded-full shadow-lg transition-all"
+        className="absolute top-6 left-6 flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur hover:bg-white rounded-full shadow-lg transition-all z-10"
       >
         <ArrowLeft className="w-4 h-4" />
         <span className="font-medium">Kembali</span>
@@ -152,6 +165,19 @@ export default function Login() {
               </>
             )}
           </button>
+
+          {/* Link to Register */}
+          <div className="text-center pt-4 border-t border-slate-200">
+            <p className="text-sm text-slate-600">
+              Belum punya akun?{' '}
+              <Link 
+                to="/register" 
+                className="text-rose-600 font-semibold hover:text-rose-700 hover:underline transition-colors"
+              >
+                Daftar di sini
+              </Link>
+            </p>
+          </div>
 
           {/* Demo Credentials */}
           <div className="mt-6 p-4 bg-slate-50 rounded-xl border border-slate-200">

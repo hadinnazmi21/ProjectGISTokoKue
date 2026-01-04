@@ -1,133 +1,273 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { User, Lock } from "lucide-react";
-import { supabase } from "../../lib/SupabaseClients";
-import bcrypt from "bcryptjs";
-import CustomAlert from "../../components/CustomAlert";
+// src/pages/auth/Register.jsx
+import { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { UserPlus, Mail, Lock, User, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { supabase } from '../../lib/SupabaseClient';
+import CustomAlert from '../../components/dashboard/CustomAlert';
 
 export default function Register() {
   const navigate = useNavigate();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    nama_lengkap: '',
+    email: '',
+    password: '',
+    confirmPassword: ''
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [alert, setAlert] = useState(null);
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    setIsLoading(true);
     setAlert(null);
 
-    try {
-      const hashedPassword = bcrypt.hashSync(password, 10);
+    // Validasi
+    if (formData.password !== formData.confirmPassword) {
+      setAlert({ type: 'error', message: 'Password dan Konfirmasi Password tidak sama!' });
+      setIsLoading(false);
+      return;
+    }
 
+    if (formData.password.length < 6) {
+      setAlert({ type: 'error', message: 'Password minimal 6 karakter!' });
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      // Cek apakah email sudah terdaftar
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('email')
+        .eq('email', formData.email.trim())
+        .single();
+
+      if (existingUser) {
+        setAlert({ type: 'error', message: 'Email sudah terdaftar! Silakan gunakan email lain atau login.' });
+        setIsLoading(false);
+        return;
+      }
+
+      // Insert user baru dengan role 'owner'
       const { data, error } = await supabase
-        .from("users")
-        .insert([{ nama: name, email: email.trim(), password: hashedPassword }]);
+        .from('users')
+        .insert([{
+          nama_lengkap: formData.nama_lengkap,
+          email: formData.email.trim(),
+          password: formData.password, // ⚠️ CATATAN: Sebaiknya hash password di production
+          role: 'owner' // Otomatis set sebagai owner
+        }])
+        .select();
 
       if (error) {
-        setAlert({ message: error.message, type: "error" });
-      } else {
-        setAlert({ message: "Akun berhasil dibuat!", type: "success" });
-        setTimeout(() => navigate("/login"), 1500);
+        throw error;
       }
-    } catch {
-      setAlert({ message: "Terjadi kesalahan, silakan coba lagi.", type: "error" });
+
+      if (data && data.length > 0) {
+        setAlert({ type: 'success', message: 'Registrasi berhasil! Mengalihkan ke halaman login...' });
+        
+        // Redirect ke login setelah 2 detik
+        setTimeout(() => {
+          navigate('/login', { 
+            state: { 
+              message: 'Registrasi berhasil! Silakan login dengan akun baru Anda.',
+              email: formData.email 
+            } 
+          });
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      setAlert({ 
+        type: 'error', 
+        message: error.message || 'Terjadi kesalahan saat registrasi. Silakan coba lagi.' 
+      });
+    } finally {
+      setIsLoading(false);
     }
-    setLoading(false);
   };
 
   return (
-    <div className="min-h-screen flex bg-navy/90">
-      <div className="hidden lg:flex w-1/2 relative overflow-hidden rounded-l-[50px]">
-        <img
-          src="/images/A-ICON-POSTER.png"
-          alt="Penginapan"
-          className="absolute inset-0 w-full h-full object-cover animate-fade-left"
-        />
-        <div className="absolute inset-0 bg-gradient-to-tr from-navy/60 via-navy/40 to-transparent flex items-center justify-center p-8">
-          <h2 className="text-4xl font-extrabold text-cream text-center leading-snug animate-fade-up">
-            Bergabunglah dengan <br /> SIG Penginapan Pekanbaru
-          </h2>
-        </div>
-      </div>
-
-      <div className="flex-1 flex items-center justify-center p-10">
-        <div className="w-full max-w-md bg-cream rounded-[50px] shadow-2xl p-12 animate-fade-up">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-navy mb-2">Daftar</h1>
-            <p className="text-navy/70 text-sm">
-              Buat akun baru untuk mengakses fitur SIG penginapan
-            </p>
-          </div>
-
-          <form onSubmit={handleRegister} className="space-y-6">
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-navy/50" />
-              <input
-                type="text"
-                placeholder="Nama Lengkap"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                className="w-full pl-10 pr-4 py-3 rounded-2xl border border-black
-                           focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-all duration-300"
-              />
-            </div>
-
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-navy/50" />
-              <input
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full pl-10 pr-4 py-3 rounded-2xl border border-black
-                           focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-all duration-300"
-              />
-            </div>
-
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-navy/50" />
-              <input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full pl-10 pr-4 py-3 rounded-2xl border border-black
-                           focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-all duration-300"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className={`w-full py-3 rounded-2xl bg-black text-cream font-semibold
-                          hover:scale-[1.03] hover:shadow-xl transition-all duration-300 ${
-                            loading ? "opacity-70 cursor-not-allowed" : ""
-                          }`}
-              disabled={loading}
-            >
-              {loading ? "Mendaftar..." : "Daftar"}
-            </button>
-          </form>
-
-          <div className="flex justify-between mt-6 text-sm text-navy/60">
-            <Link to="/login" className="hover:underline text-black">
-              Sudah punya akun?
-            </Link>
-          </div>
-        </div>
-      </div>
-
+    <div className="min-h-screen bg-gradient-to-br from-rose-50 via-pink-50 to-purple-50 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Alert */}
       {alert && (
         <CustomAlert
-          message={alert.message}
           type={alert.type}
+          message={alert.message}
           onClose={() => setAlert(null)}
         />
       )}
+
+      {/* Background Elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-20 left-10 w-72 h-72 bg-rose-300/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-300/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+      </div>
+
+      {/* Back Button */}
+      <button
+        onClick={() => navigate('/')}
+        className="absolute top-6 left-6 flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur hover:bg-white rounded-full shadow-lg transition-all z-10"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        <span className="font-medium">Kembali</span>
+      </button>
+
+      {/* Register Card */}
+      <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-rose-500 to-pink-500 p-8 text-center">
+          <div className="w-20 h-20 bg-white rounded-2xl mx-auto mb-4 flex items-center justify-center text-4xl">
+            🍰
+          </div>
+          <h1 className="text-3xl font-bold text-white mb-2">Daftar Akun</h1>
+          <p className="text-rose-50">WebGIS Toko Kue Pekanbaru</p>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleRegister} className="p-8 space-y-5">
+          {/* Nama Lengkap */}
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
+              Nama Lengkap
+            </label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <input
+                type="text"
+                name="nama_lengkap"
+                value={formData.nama_lengkap}
+                onChange={handleChange}
+                required
+                className="w-full pl-11 pr-4 py-3 border-2 border-slate-200 rounded-xl focus:border-rose-500 focus:ring-2 focus:ring-rose-200 transition-all outline-none"
+                placeholder="Nama lengkap Anda"
+              />
+            </div>
+          </div>
+
+          {/* Email */}
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
+              Email
+            </label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                required
+                className="w-full pl-11 pr-4 py-3 border-2 border-slate-200 rounded-xl focus:border-rose-500 focus:ring-2 focus:ring-rose-200 transition-all outline-none"
+                placeholder="email@example.com"
+              />
+            </div>
+          </div>
+
+          {/* Password */}
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
+              Password
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <input
+                type={showPassword ? 'text' : 'password'}
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                minLength="6"
+                className="w-full pl-11 pr-12 py-3 border-2 border-slate-200 rounded-xl focus:border-rose-500 focus:ring-2 focus:ring-rose-200 transition-all outline-none"
+                placeholder="Minimal 6 karakter"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Confirm Password */}
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
+              Konfirmasi Password
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                required
+                minLength="6"
+                className="w-full pl-11 pr-12 py-3 border-2 border-slate-200 rounded-xl focus:border-rose-500 focus:ring-2 focus:ring-rose-200 transition-all outline-none"
+                placeholder="Ulangi password Anda"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Register Button */}
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full py-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl font-bold shadow-lg hover:shadow-xl hover:scale-105 transition-all disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-2"
+          >
+            {isLoading ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Mendaftar...
+              </>
+            ) : (
+              <>
+                <UserPlus className="w-5 h-5" />
+                Daftar Sekarang
+              </>
+            )}
+          </button>
+
+          {/* Link to Login */}
+          <div className="text-center pt-4 border-t border-slate-200">
+            <p className="text-sm text-slate-600">
+              Sudah punya akun?{' '}
+              <Link 
+                to="/login" 
+                className="text-rose-600 font-semibold hover:text-rose-700 hover:underline transition-colors"
+              >
+                Login di sini
+              </Link>
+            </p>
+          </div>
+
+          {/* Info Box */}
+          <div className="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-200">
+            <p className="text-xs text-blue-800">
+              <strong>📝 Catatan:</strong> Akun yang didaftarkan otomatis sebagai <strong>Owner</strong>. 
+              Anda bisa mengelola toko kue setelah request disetujui admin.
+            </p>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

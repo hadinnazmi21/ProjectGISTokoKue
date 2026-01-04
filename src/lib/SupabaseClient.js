@@ -199,7 +199,7 @@ export const createTokoRequest = async (requestData) => {
       telp: requestData.telp || requestData.no_telp || null, // Support both
       menu_favorit: requestData.menu_favorit || null,
       deskripsi: requestData.deskripsi || null,
-      gamba: requestData.gamba || requestData.gambar_toko || requestData.gambar || null,
+      gambar: requestData.gambar || requestData.gambar_toko || requestData.gambar || null,
       gambarmenu: requestData.gambarmenu || requestData.gambar_menu || null,
       status: 'pending'
     }

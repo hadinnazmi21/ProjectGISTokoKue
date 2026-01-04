@@ -10,6 +10,7 @@ import TokoDetail from "./pages/TokoDetail";
 import TokoDetail2 from "./pages/TokoDetail2";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/auth/Login";
+import Register from "./pages/auth/Register"; // ✅ TAMBAH INI
 import DashboardOwner from "./pages/dashboard/DashboardOwner";
 import DashboardAdmin from "./pages/dashboard/DashboardAdmin";
 import OwnerRequests from "./pages/dashboard/OwnerRequests";
@@ -32,12 +33,13 @@ export default function App() {
 
       {/* Auth Routes (tanpa Navbar & Footer) */}
       <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} /> {/* ✅ ROUTE REGISTER BARU */}
 
       {/* Dashboard Routes (tanpa Navbar & Footer) */}
       <Route path="/dashboard/owner" element={<DashboardOwner />} />
       <Route path="/dashboard/admin" element={<DashboardAdmin />} />
       
-      {/* Request Routes - BARU */}
+      {/* Request Routes */}
       <Route path="/dashboard/owner/requests" element={<OwnerRequests />} />
       <Route path="/dashboard/admin/requests" element={<AdminRequests />} />
       
