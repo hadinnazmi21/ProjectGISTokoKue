@@ -1,0 +1,112 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* BASE */
+@layer base {
+  body {
+    @apply bg-white text-slate-800 antialiased;
+    font-family: Inter, system-ui, Arial, sans-serif;
+  }
+}
+
+/* COMPONENT UTIL */
+@layer components {
+  .container {
+    @apply max-w-7xl mx-auto px-6;
+  }
+
+  .section {
+    @apply py-20 bg-white;
+  }
+
+  .section-alt {
+    @apply py-20 bg-rose-50;
+  }
+
+  .section-title {
+    @apply text-3xl font-bold text-slate-800 text-center;
+  }
+
+  .section-desc {
+    @apply text-slate-600 text-center mt-2;
+  }
+}
+
+/* LEAFLET */
+.leaflet-container {
+  background: #fff7ed !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: white !important;
+  color: #1f2937 !important;
+  border-radius: 12px !important;
+  border: 2px solid #fbcfe8 !important;
+  box-shadow: 0 10px 25px rgba(0,0,0,.15) !important;
+  padding: 0 !important;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.leaflet-popup-tip {
+  background: white !important;
+  border: 2px solid #fbcfe8 !important;
+  border-top: none !important;
+  border-right: none !important;
+}
+
+/* Custom popup styling */
+.custom-popup .leaflet-popup-content-wrapper {
+  border-radius: 12px !important;
+  overflow: hidden;
+}
+
+/* ANIMATIONS */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeUp {
+  animation: fadeUp .3s ease-out;
+}
+
+/* IMAGE LOADING */
+img {
+  @apply transition-opacity duration-300;
+}
+
+img[src=""],
+img:not([src]) {
+  @apply opacity-0;
+}
+
+/* CUSTOM SCROLLBAR */
+.overflow-y-auto::-webkit-scrollbar {
+  width: 6px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  @apply bg-slate-100 rounded-full;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  @apply bg-rose-300 rounded-full hover:bg-rose-400;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .leaflet-popup-content-wrapper {
+    max-width: 250px !important;
+  }
+}
