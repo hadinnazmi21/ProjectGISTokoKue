@@ -95,11 +95,9 @@ export default function DashboardAdmin() {
   const handleSubmitForm = async (formData) => {
     setIsSubmitting(true);
     try {
-      // Admin menambahkan toko perlu user_id
-      // Bisa ditambahkan field pilih owner di form, atau set ke admin sendiri
       const dataWithUserId = {
         ...formData,
-        user_id: formData.user_id || userId // Gunakan user_id dari form atau admin sendiri
+        user_id: formData.user_id || userId
       };
 
       if (selectedToko) {
@@ -219,25 +217,68 @@ export default function DashboardAdmin() {
             <p className="text-slate-600">Kelola semua data toko kue</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl p-6 text-white shadow-lg">
-              <p className="text-blue-100 mb-1">Total Semua Toko</p>
+          {/* Stats Cards - 5 Cards (Total + 4 Kategori) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+            {/* Total Semua Toko */}
+            <div className="bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-all hover:scale-105">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-blue-100 text-sm font-medium">Total Toko</p>
+                <span className="text-3xl">🏪</span>
+              </div>
               <p className="text-4xl font-bold">{tokoList.length}</p>
+              <p className="text-blue-100 text-xs mt-1">Semua kategori</p>
             </div>
-            <div className="bg-gradient-to-br from-rose-500 to-pink-500 rounded-2xl p-6 text-white shadow-lg">
-              <p className="text-rose-100 mb-1">Toko Kue</p>
+
+            {/* Toko Kue */}
+            <div className="bg-gradient-to-br from-rose-500 to-pink-500 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-all hover:scale-105">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-rose-100 text-sm font-medium">Toko Kue</p>
+                <span className="text-3xl">🍰</span>
+              </div>
               <p className="text-4xl font-bold">
                 {tokoList.filter((t) => t.produk === 'Kue').length}
               </p>
+              <p className="text-rose-100 text-xs mt-1">Kategori Kue</p>
             </div>
-            <div className="bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl p-6 text-white shadow-lg">
-              <p className="text-amber-100 mb-1">Toko Brownies</p>
+
+            {/* Toko Brownies */}
+            <div className="bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-all hover:scale-105">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-amber-100 text-sm font-medium">Brownies</p>
+                <span className="text-3xl">🍫</span>
+              </div>
               <p className="text-4xl font-bold">
                 {tokoList.filter((t) => t.produk === 'Brownies').length}
               </p>
+              <p className="text-amber-100 text-xs mt-1">Kategori Brownies</p>
+            </div>
+
+            {/* Toko Pie */}
+            <div className="bg-gradient-to-br from-purple-500 to-indigo-500 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-all hover:scale-105">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-purple-100 text-sm font-medium">Pie</p>
+                <span className="text-3xl">🥧</span>
+              </div>
+              <p className="text-4xl font-bold">
+                {tokoList.filter((t) => t.produk === 'Pie').length}
+              </p>
+              <p className="text-purple-100 text-xs mt-1">Kategori Pie</p>
+            </div>
+
+            {/* Toko Coklat */}
+            <div className="bg-gradient-to-br from-yellow-500 to-red-500 rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-all hover:scale-105">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-yellow-100 text-sm font-medium">Coklat</p>
+                <span className="text-3xl">🍬</span>
+              </div>
+              <p className="text-4xl font-bold">
+                {tokoList.filter((t) => t.produk === 'Coklat').length}
+              </p>
+              <p className="text-yellow-100 text-xs mt-1">Kategori Coklat</p>
             </div>
           </div>
 
+          {/* Controls */}
           <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border-2 border-slate-200">
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1 relative">
@@ -247,7 +288,7 @@ export default function DashboardAdmin() {
                   placeholder="Cari nama toko..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 border-2 border-slate-200 rounded-xl focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none"
+                  className="w-full pl-11 pr-4 py-3 border-2 border-slate-200 rounded-xl focus:border-rose-500 focus:ring-2 focus:ring-rose-200 transition-all outline-none"
                 />
               </div>
 
@@ -256,24 +297,27 @@ export default function DashboardAdmin() {
                 <select
                   value={filterProduk}
                   onChange={(e) => setFilterProduk(e.target.value)}
-                  className="pl-11 pr-8 py-3 border-2 border-slate-200 rounded-xl outline-none bg-white"
+                  className="pl-11 pr-8 py-3 border-2 border-slate-200 rounded-xl focus:border-rose-500 focus:ring-2 focus:ring-rose-200 transition-all outline-none appearance-none bg-white"
                 >
                   <option value="all">Semua Produk</option>
-                  <option value="Kue">Kue</option>
-                  <option value="Brownies">Brownies</option>
+                  <option value="Kue">🍰 Kue</option>
+                  <option value="Brownies">🍫 Brownies</option>
+                  <option value="Pie">🥧 Pie</option>
+                  <option value="Coklat">🍬 Coklat</option>
                 </select>
               </div>
 
               <button
                 onClick={handleAddToko}
-                className="px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl font-semibold shadow-lg flex items-center gap-2 justify-center"
+                className="px-6 py-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center gap-2 justify-center"
               >
                 <Plus className="w-5 h-5" />
-                Tambah Toko
+                <span className="hidden sm:inline">Tambah Toko</span>
               </button>
             </div>
           </div>
 
+          {/* Toko List */}
           {isLoading ? (
             <div className="flex justify-center py-20">
               <div className="w-16 h-16 border-4 border-rose-500 border-t-transparent rounded-full animate-spin" />
@@ -281,8 +325,15 @@ export default function DashboardAdmin() {
           ) : filteredTokoList.length === 0 ? (
             <div className="bg-white rounded-2xl shadow-lg p-12 text-center border-2 border-slate-200">
               <div className="text-6xl mb-4">🏪</div>
-              <p className="text-xl font-semibold text-slate-800 mb-2">Tidak ada toko</p>
-              <p className="text-slate-600">Coba ubah filter atau pencarian</p>
+              <p className="text-xl font-semibold text-slate-800 mb-2">
+                {tokoList.length === 0 ? 'Belum ada toko' : 'Tidak ditemukan'}
+              </p>
+              <p className="text-slate-600">
+                {tokoList.length === 0 
+                  ? 'Mulai tambahkan toko kue' 
+                  : 'Coba ubah filter atau kata kunci pencarian'
+                }
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
