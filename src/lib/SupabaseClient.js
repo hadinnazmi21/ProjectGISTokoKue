@@ -67,6 +67,75 @@ export const getUserById = async (userId) => {
   }
 }
 
+/**
+ * Get user by Email
+ */
+export const getUserByEmail = async (email) => {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .single()
+    
+    if (error) throw error
+    return { success: true, data }
+  } catch (error) {
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Update user profile (nama_lengkap)
+ */
+export const updateUserProfile = async (userId, namaLengkap) => {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .update({ nama_lengkap: namaLengkap })
+      .eq('user_id', userId)
+      .select()
+    
+    if (error) throw error
+    return { success: true, data: data[0] }
+  } catch (error) {
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Change user password
+ */
+export const changeUserPassword = async (userId, currentPassword, newPassword) => {
+  try {
+    // 1. Verifikasi password lama
+    const { data: user, error: fetchError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('user_id', userId)
+      .single()
+    
+    if (fetchError) throw new Error('User tidak ditemukan')
+    
+    // 2. Cek password lama
+    if (user.password !== currentPassword) {
+      throw new Error('Password saat ini salah')
+    }
+    
+    // 3. Update password baru
+    const { data, error } = await supabase
+      .from('users')
+      .update({ password: newPassword })
+      .eq('user_id', userId)
+      .select()
+    
+    if (error) throw error
+    return { success: true, data: data[0] }
+  } catch (error) {
+    return { success: false, error: error.message }
+  }
+}
+
 // ==================== TOKO KUE CRUD FUNCTIONS ====================
 
 /**

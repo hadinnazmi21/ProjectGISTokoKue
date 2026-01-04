@@ -1,18 +1,27 @@
 // src/pages/dashboard/Settings.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Settings as SettingsIcon, User, Mail, Shield, Save, Key } from 'lucide-react';
+import { Settings as SettingsIcon, User, Mail, Shield, Save, Key, AlertCircle } from 'lucide-react';
 import Sidebar from '../../components/dashboard/Sidebar';
 import DashboardNavbar from '../../components/dashboard/DashboardNavbar';
 import CustomAlert from '../../components/dashboard/CustomAlert';
-import { logoutUser } from '../../lib/SupabaseClient';
+import { 
+  logoutUser, 
+  getUserByEmail, 
+  updateUserProfile, 
+  changeUserPassword,
+  addLog 
+} from '../../lib/SupabaseClient';
 
 export default function Settings() {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [userEmail, setUserEmail] = useState('');
   const [userRole, setUserRole] = useState('');
+  const [userId, setUserId] = useState(null);
   const [alert, setAlert] = useState(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+  const [isLoadingPassword, setIsLoadingPassword] = useState(false);
 
   // Form state
   const [fullName, setFullName] = useState('');
@@ -23,6 +32,7 @@ export default function Settings() {
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user'));
     const role = localStorage.getItem('userRole');
+    const storedUserId = localStorage.getItem('userId');
 
     if (!user) {
       navigate('/login');
@@ -31,27 +41,73 @@ export default function Settings() {
 
     setUserEmail(user.email);
     setUserRole(role);
-    
-    // Load user data if exists
-    const savedName = localStorage.getItem('fullName');
-    if (savedName) setFullName(savedName);
+    setUserId(parseInt(storedUserId));
+
+    // Load user data from database
+    loadUserData(user.email);
   }, [navigate]);
 
-  const handleUpdateProfile = (e) => {
-    e.preventDefault();
-    
-    // Simple save to localStorage (untuk demo)
-    localStorage.setItem('fullName', fullName);
-    
-    setAlert({ type: 'success', message: 'Profil berhasil diperbarui!' });
+  const loadUserData = async (email) => {
+    try {
+      const result = await getUserByEmail(email);
+      if (result.success && result.data) {
+        setFullName(result.data.nama_lengkap || '');
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error);
+    }
   };
 
-  const handleChangePassword = (e) => {
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    
+    if (!fullName.trim()) {
+      setAlert({ type: 'error', message: 'Nama lengkap tidak boleh kosong!' });
+      return;
+    }
+
+    setIsLoadingProfile(true);
+    try {
+      const result = await updateUserProfile(userId, fullName.trim());
+      
+      if (result.success) {
+        // Update localStorage
+        const user = JSON.parse(localStorage.getItem('user'));
+        user.nama_lengkap = fullName.trim();
+        localStorage.setItem('user', JSON.stringify(user));
+
+        // Catat log
+        await addLog({
+          userEmail,
+          userRole,
+          action: 'update_profile',
+          tokoId: null,
+          tokoName: null,
+          description: `${userRole === 'admin' ? 'Admin' : 'Owner'} mengubah nama lengkap menjadi "${fullName.trim()}"`
+        });
+
+        setAlert({ type: 'success', message: 'Profil berhasil diperbarui!' });
+      } else {
+        setAlert({ type: 'error', message: 'Gagal memperbarui profil: ' + result.error });
+      }
+    } catch (error) {
+      setAlert({ type: 'error', message: 'Terjadi kesalahan: ' + error.message });
+    } finally {
+      setIsLoadingProfile(false);
+    }
+  };
+
+  const handleChangePassword = async (e) => {
     e.preventDefault();
 
     // Validasi
+    if (!currentPassword) {
+      setAlert({ type: 'error', message: 'Password saat ini harus diisi!' });
+      return;
+    }
+
     if (newPassword.length < 6) {
-      setAlert({ type: 'error', message: 'Password minimal 6 karakter!' });
+      setAlert({ type: 'error', message: 'Password baru minimal 6 karakter!' });
       return;
     }
 
@@ -60,16 +116,48 @@ export default function Settings() {
       return;
     }
 
-    // Reset form
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
+    if (currentPassword === newPassword) {
+      setAlert({ type: 'error', message: 'Password baru harus berbeda dengan password saat ini!' });
+      return;
+    }
 
-    setAlert({ type: 'success', message: 'Password berhasil diubah!' });
+    setIsLoadingPassword(true);
+    try {
+      const result = await changeUserPassword(userId, currentPassword, newPassword);
+      
+      if (result.success) {
+        // Catat log
+        await addLog({
+          userEmail,
+          userRole,
+          action: 'change_password',
+          tokoId: null,
+          tokoName: null,
+          description: `${userRole === 'admin' ? 'Admin' : 'Owner'} mengubah password akun`
+        });
+
+        // Reset form
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+
+        setAlert({ type: 'success', message: 'Password berhasil diubah! Silakan login kembali dengan password baru.' });
+
+        // Auto logout setelah 2 detik
+        setTimeout(() => {
+          handleLogout();
+        }, 2000);
+      } else {
+        setAlert({ type: 'error', message: result.error });
+      }
+    } catch (error) {
+      setAlert({ type: 'error', message: 'Terjadi kesalahan: ' + error.message });
+    } finally {
+      setIsLoadingPassword(false);
+    }
   };
 
   const handleLogout = async () => {
-    if (!window.confirm('Yakin ingin logout?')) return;
     await logoutUser();
     localStorage.clear();
     navigate('/login');
@@ -169,10 +257,20 @@ export default function Settings() {
               {/* Submit Button */}
               <button
                 type="submit"
-                className="w-full py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center gap-2"
+                disabled={isLoadingProfile}
+                className="w-full py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
-                <Save className="w-5 h-5" />
-                Simpan Perubahan
+                {isLoadingProfile ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Menyimpan...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-5 h-5" />
+                    Simpan Perubahan
+                  </>
+                )}
               </button>
             </form>
           </div>
@@ -186,6 +284,19 @@ export default function Settings() {
               <div>
                 <h2 className="text-xl font-bold text-slate-800">Ubah Password</h2>
                 <p className="text-sm text-slate-500">Pastikan password Anda aman</p>
+              </div>
+            </div>
+
+            {/* Security Warning */}
+            <div className="mb-6 bg-amber-50 border-2 border-amber-200 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-amber-900 text-sm">Perhatian!</p>
+                  <p className="text-amber-700 text-xs mt-1">
+                    Setelah mengubah password, Anda akan logout otomatis dan harus login kembali dengan password baru.
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -219,6 +330,9 @@ export default function Settings() {
                   className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-rose-500 focus:ring-2 focus:ring-rose-200 transition-all outline-none"
                   placeholder="Minimal 6 karakter"
                 />
+                <p className="text-xs text-slate-500 mt-1">
+                  Password harus minimal 6 karakter
+                </p>
               </div>
 
               {/* Confirm Password */}
@@ -239,10 +353,20 @@ export default function Settings() {
               {/* Submit Button */}
               <button
                 type="submit"
-                className="w-full py-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center gap-2"
+                disabled={isLoadingPassword}
+                className="w-full py-3 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
-                <Key className="w-5 h-5" />
-                Ubah Password
+                {isLoadingPassword ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Mengubah Password...
+                  </>
+                ) : (
+                  <>
+                    <Key className="w-5 h-5" />
+                    Ubah Password
+                  </>
+                )}
               </button>
             </form>
           </div>
