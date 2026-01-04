@@ -94,34 +94,46 @@ export default function AdminRequests() {
 
     try {
       if (approvalType === 'approve') {
+        // ✅ APPROVE REQUEST
         const result = await approveRequest(selectedRequest.id, approvalNote);
         if (result.success) {
+          // ✅ CATAT LOG APPROVE
           await addLog({
             userEmail,
+            userRole: 'admin',
             action: 'approve_request',
-            tokoName: selectedRequest.nama
+            tokoId: result.data?.id || null,
+            tokoName: selectedRequest.nama,
+            description: `Admin menyetujui request toko "${selectedRequest.nama}" dari owner ${selectedRequest.users?.email || 'Unknown'}`
           });
+          
           setAlert({ type: 'success', message: 'Request disetujui! Toko berhasil ditambahkan.' });
         } else {
-          setAlert({ type: 'error', message: 'Gagal menyetujui request' });
+          setAlert({ type: 'error', message: 'Gagal menyetujui request: ' + result.error });
         }
       } else {
+        // ✅ REJECT REQUEST
         const result = await rejectRequest(selectedRequest.id, approvalNote);
         if (result.success) {
+          // ✅ CATAT LOG REJECT
           await addLog({
             userEmail,
+            userRole: 'admin',
             action: 'reject_request',
-            tokoName: selectedRequest.nama
+            tokoId: null,
+            tokoName: selectedRequest.nama,
+            description: `Admin menolak request toko "${selectedRequest.nama}" dari owner ${selectedRequest.users?.email || 'Unknown'}. Alasan: ${approvalNote || 'Tidak ada catatan'}`
           });
+          
           setAlert({ type: 'success', message: 'Request ditolak.' });
         } else {
-          setAlert({ type: 'error', message: 'Gagal menolak request' });
+          setAlert({ type: 'error', message: 'Gagal menolak request: ' + result.error });
         }
       }
       loadRequests();
       setIsApprovalModalOpen(false);
     } catch (error) {
-      setAlert({ type: 'error', message: 'Terjadi kesalahan' });
+      setAlert({ type: 'error', message: 'Terjadi kesalahan: ' + error.message });
     }
   };
 
@@ -269,7 +281,7 @@ export default function AdminRequests() {
                       <div className="space-y-1 text-sm text-slate-600">
                         <p><strong>Owner:</strong> {request.users?.email || '-'}</p>
                         <p><strong>Produk:</strong> {request.produk}</p>
-                        <p><strong>Alamat:</strong> {request.alamat}</p>
+                        <p><strong>Jalan:</strong> {request.jalan || '-'}</p>
                         <p><strong>Kecamatan:</strong> {request.kecamatan}</p>
                         <p><strong>Dikirim:</strong> {formatDate(request.created_at)}</p>
                       </div>
@@ -334,8 +346,8 @@ export default function AdminRequests() {
                 <p className="text-slate-800">{selectedRequest.produk}</p>
               </div>
               <div>
-                <p className="text-sm text-slate-600 mb-1">Alamat Lengkap</p>
-                <p className="text-slate-800">{selectedRequest.alamat}</p>
+                <p className="text-sm text-slate-600 mb-1">Jalan</p>
+                <p className="text-slate-800">{selectedRequest.jalan || '-'}</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>

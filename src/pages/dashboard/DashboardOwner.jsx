@@ -93,10 +93,14 @@ export default function DashboardOwner() {
 
       const result = await updateToko(selectedToko.id, dataWithUserId);
       if (result.success) {
+        // ✅ CATAT LOG UPDATE
         await addLog({
           userEmail,
+          userRole: 'owner',
           action: 'update',
-          tokoName: formData.nama
+          tokoId: selectedToko.id,
+          tokoName: formData.nama,
+          description: `Owner mengedit toko "${formData.nama}"`
         });
 
         setAlert({ type: 'success', message: 'Toko berhasil diupdate!' });
@@ -125,10 +129,14 @@ export default function DashboardOwner() {
     try {
       const result = await deleteToko(toko.id);
       if (result.success) {
+        // ✅ CATAT LOG DELETE
         await addLog({
           userEmail,
+          userRole: 'owner',
           action: 'delete',
-          tokoName: toko.nama
+          tokoId: toko.id,
+          tokoName: toko.nama,
+          description: `Owner menghapus toko "${toko.nama}"`
         });
 
         setAlert({ type: 'success', message: 'Toko berhasil dihapus!' });

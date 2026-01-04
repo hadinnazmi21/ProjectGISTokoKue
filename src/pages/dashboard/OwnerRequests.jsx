@@ -11,7 +11,7 @@ import {
   createTokoRequest, 
   deleteRequest,
   logoutUser,
-  addLog  // ✅ TAMBAHKAN INI
+  addLog
 } from '../../lib/SupabaseClient';
 
 export default function OwnerRequests() {
@@ -67,11 +67,14 @@ export default function OwnerRequests() {
 
       const result = await createTokoRequest(requestData);
       if (result.success) {
-        // ✅ TAMBAH LOG - Owner membuat request
+        // ✅ CATAT LOG CREATE REQUEST
         await addLog({
           userEmail,
+          userRole: 'owner',
           action: 'create_request',
-          tokoName: formData.nama
+          tokoId: null,
+          tokoName: formData.nama,
+          description: `Owner mengirim request toko baru "${formData.nama}"`
         });
 
         setAlert({ type: 'success', message: 'Request berhasil dikirim! Menunggu persetujuan admin.' });
@@ -96,12 +99,15 @@ export default function OwnerRequests() {
       
       const result = await deleteRequest(requestId);
       if (result.success) {
-        // ✅ TAMBAH LOG - Owner menghapus request
+        // ✅ CATAT LOG DELETE REQUEST
         if (request) {
           await addLog({
             userEmail,
+            userRole: 'owner',
             action: 'delete_request',
-            tokoName: request.nama
+            tokoId: null,
+            tokoName: request.nama,
+            description: `Owner menghapus request toko "${request.nama}"`
           });
         }
 
@@ -315,7 +321,7 @@ export default function OwnerRequests() {
                 <p className="text-slate-800">{selectedRequest.produk}</p>
               </div>
               <div>
-                <p className="text-sm text-slate-600 mb-1">Alamat</p>
+                <p className="text-sm text-slate-600 mb-1">Jalan</p>
                 <p className="text-slate-800">{selectedRequest.jalan || '-'}</p>
               </div>
               <div className="grid grid-cols-2 gap-4">

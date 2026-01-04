@@ -101,13 +101,19 @@ export default function DashboardAdmin() {
       };
 
       if (selectedToko) {
+        // ✅ UPDATE TOKO
         const result = await updateToko(selectedToko.id, dataWithUserId);
         if (result.success) {
+          // ✅ CATAT LOG UPDATE
           await addLog({
             userEmail,
+            userRole: 'admin',
             action: 'update',
-            tokoName: formData.nama
+            tokoId: selectedToko.id,
+            tokoName: formData.nama,
+            description: `Admin mengedit toko "${formData.nama}"`
           });
+          
           setAlert({ type: 'success', message: 'Toko berhasil diupdate!' });
           loadToko();
           setIsFormOpen(false);
@@ -118,13 +124,19 @@ export default function DashboardAdmin() {
           });
         }
       } else {
+        // ✅ CREATE TOKO
         const result = await addToko(dataWithUserId);
         if (result.success) {
+          // ✅ CATAT LOG CREATE
           await addLog({
             userEmail,
+            userRole: 'admin',
             action: 'create',
-            tokoName: formData.nama
+            tokoId: result.data.id,
+            tokoName: formData.nama,
+            description: `Admin menambahkan toko baru "${formData.nama}"`
           });
+          
           setAlert({
             type: 'success',
             message: 'Toko berhasil ditambahkan!'
@@ -154,11 +166,16 @@ export default function DashboardAdmin() {
     try {
       const result = await deleteToko(toko.id);
       if (result.success) {
+        // ✅ CATAT LOG DELETE
         await addLog({
           userEmail,
+          userRole: 'admin',
           action: 'delete',
-          tokoName: toko.nama
+          tokoId: toko.id,
+          tokoName: toko.nama,
+          description: `Admin menghapus toko "${toko.nama}"`
         });
+        
         setAlert({
           type: 'success',
           message: 'Toko berhasil dihapus!'

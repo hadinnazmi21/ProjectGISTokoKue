@@ -177,13 +177,12 @@ export const deleteToko = async (id) => {
 // ==================== TOKO REQUEST FUNCTIONS ====================
 
 /**
- * CREATE: Owner submit request toko baru - SCHEMA BARU
+ * CREATE: Owner submit request toko baru
  */
 export const createTokoRequest = async (requestData) => {
   try {
     console.log('📝 Creating request with data:', requestData);
     
-    // Pastikan semua field sesuai dengan schema baru
     const requestPayload = {
       user_id: requestData.user_id,
       nama: requestData.nama,
@@ -191,15 +190,14 @@ export const createTokoRequest = async (requestData) => {
       lng: requestData.lng,
       kecamatan: requestData.kecamatan || null,
       kelurahan: requestData.kelurahan || null,
-      jalan: requestData.jalan || requestData.alamat || null, // Support both
+      jalan: requestData.jalan || requestData.alamat || null,
       produk: requestData.produk,
-      // Field opsional
       jam_buka: requestData.jam_buka || null,
       tahun_berdiri: requestData.tahun_berdiri || null,
-      telp: requestData.telp || requestData.no_telp || null, // Support both
+      telp: requestData.telp || requestData.no_telp || null,
       menu_favorit: requestData.menu_favorit || null,
       deskripsi: requestData.deskripsi || null,
-      gambar: requestData.gambar || requestData.gambar_toko || requestData.gambar || null,
+      gambar: requestData.gambar || requestData.gambar_toko || null,
       gambarmenu: requestData.gambarmenu || requestData.gambar_menu || null,
       status: 'pending'
     }
@@ -235,7 +233,8 @@ export const getAllRequests = async () => {
         *,
         users (
           email,
-          nama_lengkap
+          nama_lengkap,
+          role
         )
       `)
       .order('created_at', { ascending: false })
@@ -266,7 +265,7 @@ export const getRequestsByUserId = async (userId) => {
 }
 
 /**
- * UPDATE: Admin approve request - ULTRA DEFENSIVE VERSION
+ * UPDATE: Admin approve request
  */
 export const approveRequest = async (requestId, adminNote = '') => {
   try {
@@ -291,25 +290,13 @@ export const approveRequest = async (requestId, adminNote = '') => {
     }
 
     console.log('✅ Request data:', JSON.stringify(request, null, 2));
-    console.log('📋 Request fields:', Object.keys(request));
 
     // 2. Validasi data required
     if (!request.user_id || !request.nama || !request.lat || !request.lng) {
       throw new Error('Data required tidak lengkap (user_id, nama, lat, lng)');
     }
 
-    // 3. TEST INSERT - Cek struktur tabel toko_kue dulu
-    console.log('🔍 Testing toko_kue table structure...');
-    const { data: sampleToko } = await supabase
-      .from('toko_kue')
-      .select('*')
-      .limit(1);
-    
-    if (sampleToko && sampleToko.length > 0) {
-      console.log('📋 Toko_kue available fields:', Object.keys(sampleToko[0]));
-    }
-
-    // 4. Prepare payload dengan NULL safety
+    // 3. Prepare payload
     const tokoPayload = {
       user_id: request.user_id,
       nama: request.nama,
@@ -323,12 +310,12 @@ export const approveRequest = async (requestId, adminNote = '') => {
       telp: request.telp || request.no_telp || null,
       menu_favorit: request.menu_favorit || null,
       deskripsi: request.deskripsi || null,
-      gambar: request.gamba || request.gambar_toko || request.gambar || null,
+      gambar: request.gambar || request.gambar_toko || null,
       gambarmenu: request.gambarmenu || request.gambar_menu || null,
       rating: null
     };
 
-    // Handle tahun_berdiri - bisa BIGINT atau INTEGER
+    // Handle tahun_berdiri
     if (request.tahun_berdiri) {
       const tahun = parseInt(request.tahun_berdiri);
       tokoPayload.tahun_berdiri = isNaN(tahun) ? null : tahun;
@@ -337,14 +324,8 @@ export const approveRequest = async (requestId, adminNote = '') => {
     }
 
     console.log('📦 Toko payload:', JSON.stringify(tokoPayload, null, 2));
-    console.log('📊 Payload types:', {
-      user_id: typeof tokoPayload.user_id,
-      lat: typeof tokoPayload.lat,
-      lng: typeof tokoPayload.lng,
-      tahun_berdiri: typeof tokoPayload.tahun_berdiri
-    });
 
-    // 5. Insert ke toko_kue dengan error handling detail
+    // 4. Insert ke toko_kue
     console.log('💾 Attempting to insert into toko_kue...');
     const { data: newToko, error: insertError } = await supabase
       .from('toko_kue')
@@ -353,13 +334,8 @@ export const approveRequest = async (requestId, adminNote = '') => {
     
     if (insertError) {
       console.error('❌ INSERT FAILED!');
-      console.error('❌ Error code:', insertError.code);
-      console.error('❌ Error message:', insertError.message);
-      console.error('❌ Error details:', insertError.details);
-      console.error('❌ Error hint:', insertError.hint);
-      console.error('❌ Full error:', JSON.stringify(insertError, null, 2));
+      console.error('❌ Error:', JSON.stringify(insertError, null, 2));
       
-      // Coba identifikasi masalahnya
       if (insertError.code === '23503') {
         throw new Error(`Foreign key constraint failed. User ID ${request.user_id} mungkin tidak ada di tabel users.`);
       } else if (insertError.code === '23502') {
@@ -378,7 +354,7 @@ export const approveRequest = async (requestId, adminNote = '') => {
     console.log('✅ Toko berhasil ditambahkan!');
     console.log('✅ New toko data:', JSON.stringify(newToko[0], null, 2));
 
-    // 6. Update status request
+    // 5. Update status request
     console.log('📝 Updating request status...');
     const { error: updateError } = await supabase
       .from('toko_requests')
@@ -390,8 +366,6 @@ export const approveRequest = async (requestId, adminNote = '') => {
     
     if (updateError) {
       console.error('⚠️ Warning - Error updating request status:', updateError);
-      console.warn('⚠️ Toko sudah ditambahkan, tapi status request gagal diupdate');
-      // Jangan throw error, karena toko sudah berhasil ditambahkan
     } else {
       console.log('✅ Request status updated to approved');
     }
@@ -401,14 +375,7 @@ export const approveRequest = async (requestId, adminNote = '') => {
 
   } catch (error) {
     console.error('=== APPROVE REQUEST FAILED ===');
-    console.error('❌ Error type:', error.constructor.name);
-    console.error('❌ Error message:', error.message);
-    if (error.code) {
-      console.error('❌ Error code:', error.code);
-    }
-    if (error.stack) {
-      console.error('❌ Error stack:', error.stack);
-    }
+    console.error('❌ Error:', error);
     return { success: false, error: error.message };
   }
 }
@@ -562,23 +529,36 @@ export const filterByProduk = async (produk) => {
 // ==================== LOG HISTORY FUNCTIONS ====================
 
 /**
- * Tambah log aktivitas
+ * ✅ FIXED: Tambah log aktivitas
  */
 export const addLog = async (logData) => {
   try {
+    const logPayload = {
+      user_email: logData.userEmail,
+      user_role: logData.userRole || null,
+      action: logData.action,
+      toko_id: logData.tokoId || null,
+      toko_name: logData.tokoName || null,
+      description: logData.description || null,
+      timestamp: new Date().toISOString()
+    };
+
+    console.log('📝 Adding log:', logPayload);
+
     const { data, error } = await supabase
       .from('log_history')
-      .insert([{
-        user_email: logData.userEmail,
-        action: logData.action,
-        toko_name: logData.tokoName,
-        timestamp: new Date().toISOString()
-      }])
+      .insert([logPayload])
       .select()
     
-    if (error) throw error
+    if (error) {
+      console.error('❌ Error adding log:', error);
+      throw error;
+    }
+    
+    console.log('✅ Log added successfully:', data);
     return { success: true, data: data[0] }
   } catch (error) {
+    console.error('❌ Failed to add log:', error);
     return { success: false, error: error.message }
   }
 }
@@ -591,6 +571,24 @@ export const getAllLogs = async () => {
     const { data, error } = await supabase
       .from('log_history')
       .select('*')
+      .order('timestamp', { ascending: false })
+    
+    if (error) throw error
+    return { success: true, data }
+  } catch (error) {
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * GET: Ambil log berdasarkan user email
+ */
+export const getLogsByUserEmail = async (userEmail) => {
+  try {
+    const { data, error } = await supabase
+      .from('log_history')
+      .select('*')
+      .eq('user_email', userEmail)
       .order('timestamp', { ascending: false })
     
     if (error) throw error
