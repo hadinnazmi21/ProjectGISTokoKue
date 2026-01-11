@@ -28,7 +28,8 @@ export default function TokoSidebar({
       "Kue": "🍰",
       "Brownies": "🍫",
       "Coklat": "🍬",
-      "Pie": "🥧"
+      "Pie": "🥧",
+      "Oleh-Oleh": "🎁"
     };
     return icons[produk] || "🍰";
   };

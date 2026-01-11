@@ -37,7 +37,8 @@ export default function MapPage() {
       "Kue": "🍰",
       "Brownies": "🍫",
       "Coklat": "🍬",
-      "Pie": "🥧"
+      "Pie": "🥧",
+      "Oleh-Oleh": "🎁"
     };
     return icons[produk] || "🍰";
   };
@@ -115,7 +116,6 @@ export default function MapPage() {
       attribution: "© OpenStreetMap",
     }).addTo(leafletMapRef.current);
   }, [loading, error]);
-
   /* ===== LAYER 1: MARKERS - MENGGUNAKAN FILTERED DATA ===== */
   useEffect(() => {
     if (!leafletMapRef.current) return;
@@ -276,7 +276,6 @@ export default function MapPage() {
       });
     }
   };
-
   // Loading & Error States
   if (loading) {
     return (
@@ -395,6 +394,10 @@ export default function MapPage() {
               <span className="text-xl">🥧</span>
               <span className="text-slate-600">Toko Pie</span>
             </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🎁</span>
+              <span className="text-slate-600">Toko Oleh-Oleh</span>
+            </div>
             <div className="pt-2 border-t">
               <p className="text-xs text-slate-500">💡 Ukuran marker = Rating toko</p>
               <p className="text-xs text-slate-500">🔥 Heatmap = Konsentrasi toko</p>
@@ -404,7 +407,6 @@ export default function MapPage() {
             </div>
           </div>
         </div>
-
         {/* Store Detail Card */}
         {selectedStore && (
           <div className="absolute top-20 right-4 w-80 z-[1000]">

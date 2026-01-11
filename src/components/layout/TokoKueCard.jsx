@@ -7,7 +7,8 @@ export default function TokoKueCard({ toko, onClick, isActive }) {
       "Kue": "🍰",
       "Brownies": "🍫",
       "Coklat": "🍬",
-      "Pie": "🥧"
+      "Pie": "🥧",
+      "Oleh-Oleh": "🎁"
     };
     return icons[produk] || "🍰";
   };

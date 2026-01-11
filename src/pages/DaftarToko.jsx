@@ -19,7 +19,8 @@ export default function DaftarToko() {
       "Kue": "🍰",
       "Brownies": "🍫",
       "Coklat": "🍬",
-      "Pie": "🥧"
+      "Pie": "🥧",
+      "Oleh-oleh": "🎁"
     };
     return icons[produk] || "🍰";
   };
@@ -172,7 +173,7 @@ export default function DaftarToko() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <input
               type="text"
-              placeholder="Cari nama atau alamat penginapan..."
+              placeholder="Cari nama atau alamat toko..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-12 pr-4 py-4 border-2 border-slate-200 rounded-xl focus:border-rose-500 focus:ring-2 focus:ring-rose-200 transition-all outline-none text-slate-700"
