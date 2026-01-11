@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { X, MapPin, Phone, Star, Clock, Calendar, Layers, Eye, EyeOff, RefreshCw } from "lucide-react";
 import { getAllToko } from "../lib/SupabaseClient";
 import L from "leaflet";
@@ -14,6 +14,11 @@ export default function MapPage() {
 
   const [isPanelOpen, setIsPanelOpen] = useState(true);
   const [selectedStore, setSelectedStore] = useState(null);
+
+  // Filter states - dipindahkan ke MapPage
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedKecamatan, setSelectedKecamatan] = useState("all");
+  const [selectedProduk, setSelectedProduk] = useState("all");
 
   // Layer visibility states
   const [layerVisibility, setLayerVisibility] = useState({
@@ -36,6 +41,20 @@ export default function MapPage() {
     };
     return icons[produk] || "🍰";
   };
+
+  // ===== FILTER LOGIC - menggunakan useMemo untuk performance =====
+  const filteredData = useMemo(() => {
+    return data.filter(toko => {
+      const matchSearch = toko.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         toko.kecamatan.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         toko.kelurahan.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchKecamatan = selectedKecamatan === "all" || toko.kecamatan === selectedKecamatan;
+      const matchProduk = selectedProduk === "all" || toko.produk === selectedProduk;
+
+      return matchSearch && matchKecamatan && matchProduk;
+    });
+  }, [data, searchQuery, selectedKecamatan, selectedProduk]);
 
   // ===== FETCH DATA DARI SUPABASE =====
   const fetchData = async () => {
@@ -97,7 +116,7 @@ export default function MapPage() {
     }).addTo(leafletMapRef.current);
   }, [loading, error]);
 
-  /* ===== LAYER 1: MARKERS dengan Icon & Size berbeda ===== */
+  /* ===== LAYER 1: MARKERS - MENGGUNAKAN FILTERED DATA ===== */
   useEffect(() => {
     if (!leafletMapRef.current) return;
 
@@ -107,7 +126,8 @@ export default function MapPage() {
 
     if (!layerVisibility.markers) return;
 
-    data.forEach(t => {
+    // GUNAKAN filteredData BUKAN data
+    filteredData.forEach(t => {
       if (!t.lat || !t.lng) return;
 
       // Icon berdasarkan produk
@@ -187,7 +207,13 @@ export default function MapPage() {
 
       markersRef.current.push(marker);
     });
-  }, [data, layerVisibility.markers]);
+
+    // Auto-fit bounds jika ada filtered data
+    if (filteredData.length > 0 && leafletMapRef.current) {
+      const bounds = L.latLngBounds(filteredData.map(t => [t.lat, t.lng]));
+      leafletMapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+    }
+  }, [filteredData, layerVisibility.markers]);
 
   // Handle custom event untuk select store
   useEffect(() => {
@@ -203,7 +229,7 @@ export default function MapPage() {
     return () => window.removeEventListener('selectStore', handleSelectStore);
   }, [data]);
 
-  /* ===== LAYER 2: HEATMAP Density ===== */
+  /* ===== LAYER 2: HEATMAP - MENGGUNAKAN FILTERED DATA ===== */
   useEffect(() => {
     if (!leafletMapRef.current) return;
 
@@ -213,10 +239,10 @@ export default function MapPage() {
       heatmapRef.current = null;
     }
 
-    if (!layerVisibility.heatmap || data.length === 0) return;
+    if (!layerVisibility.heatmap || filteredData.length === 0) return;
 
-    // Create heatmap points dengan intensity berdasarkan rating
-    const heatPoints = data.map(t => [t.lat, t.lng, t.rating / 5]);
+    // Create heatmap points dengan intensity berdasarkan rating - GUNAKAN filteredData
+    const heatPoints = filteredData.map(t => [t.lat, t.lng, t.rating / 5]);
 
     heatmapRef.current = L.heatLayer(heatPoints, {
       radius: 30,
@@ -232,7 +258,7 @@ export default function MapPage() {
       }
     }).addTo(leafletMapRef.current);
 
-  }, [data, layerVisibility.heatmap]);
+  }, [filteredData, layerVisibility.heatmap]);
 
   const toggleLayer = (layer) => {
     setLayerVisibility(prev => ({
@@ -291,8 +317,14 @@ export default function MapPage() {
           onTokoSelect={handleTokoSelect}
           selectedToko={selectedStore}
           onClose={() => setIsPanelOpen(false)}
-          filteredCount={data.length}
-          totalCount={data.length}
+          // Pass filter state ke TokoSidebar
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          selectedKecamatan={selectedKecamatan}
+          setSelectedKecamatan={setSelectedKecamatan}
+          selectedProduk={selectedProduk}
+          setSelectedProduk={setSelectedProduk}
+          filteredToko={filteredData}
         />
       </aside>
 
@@ -366,6 +398,9 @@ export default function MapPage() {
             <div className="pt-2 border-t">
               <p className="text-xs text-slate-500">💡 Ukuran marker = Rating toko</p>
               <p className="text-xs text-slate-500">🔥 Heatmap = Konsentrasi toko</p>
+              <p className="text-xs text-rose-600 font-semibold mt-1">
+                🎯 {filteredData.length} dari {data.length} toko aktif
+              </p>
             </div>
           </div>
         </div>

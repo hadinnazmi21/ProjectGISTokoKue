@@ -7,12 +7,15 @@ export default function TokoSidebar({
   onTokoSelect,
   selectedToko,
   onClose,
-  filteredCount,
-  totalCount
+  // Props baru untuk filter state
+  searchQuery,
+  setSearchQuery,
+  selectedKecamatan,
+  setSelectedKecamatan,
+  selectedProduk,
+  setSelectedProduk,
+  filteredToko
 }) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedKecamatan, setSelectedKecamatan] = useState("all");
-  const [selectedProduk, setSelectedProduk] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
 
   // Get unique values
@@ -29,18 +32,6 @@ export default function TokoSidebar({
     };
     return icons[produk] || "🍰";
   };
-
-  // Filter logic
-  const filteredToko = tokoList.filter(toko => {
-    const matchSearch = toko.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                       toko.kecamatan.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                       toko.kelurahan.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchKecamatan = selectedKecamatan === "all" || toko.kecamatan === selectedKecamatan;
-    const matchProduk = selectedProduk === "all" || toko.produk === selectedProduk;
-
-    return matchSearch && matchKecamatan && matchProduk;
-  });
 
   const handleReset = () => {
     setSearchQuery("");
